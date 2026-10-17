@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>평가 계획·루브릭</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #db2777; --accent-2: #f43f5e; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .filters select { width: auto; }
+  .subj { margin-top: 18px; padding: 16px; }
+  .subj-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .subj-head h3 { margin: 0; font-size: 17px; letter-spacing: -0.02em; }
+  .wbar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-2); margin: 12px 0 6px; }
+  .wbar span { height: 100%; }
+  .wsum { font-size: 12px; font-weight: 700; margin-left: auto; padding: 4px 10px; border-radius: 999px; }
+  .wsum.ok { background: color-mix(in srgb, #22c55e 16%, transparent); color: #15803d; }
+  .wsum.bad { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .as { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 10px 4px; border-top: 1px solid var(--border); cursor: pointer; }
+  .as:first-of-type { border-top: 0; }
+  .as:hover h4 { color: var(--accent); }
+  .date { text-align: center; line-height: 1.1; font-weight: 800; font-size: 17px; }
+  .date small { display: block; font-size: 11px; color: var(--text-2); font-weight: 600; }
+  .as h4 { margin: 0 0 3px; font-size: 15px; letter-spacing: -0.02em; }
+  .as .muted { font-size: 12px; }
+  .pct { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .kind { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
+  .kind.perf { background: var(--accent-soft); color: var(--accent); }
+  .month-nav { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; }
+  .month-nav h3 { margin: 0; font-size: 18px; flex: 1; text-align: center; }
+  .day { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 12px 0; border-top: 1px dashed var(--border); }
+  .day .d { font-weight: 800; }
+  .day .d small { display: block; color: var(--text-2); font-weight: 600; font-size: 12px; }
+  .day .d.today { color: var(--accent); }
+  .ev { padding: 10px 12px; border-radius: 14px; background: var(--surface-2); margin-bottom: 6px; cursor: pointer; border-left: 4px solid var(--accent); }
+  .ev b { font-size: 14px; }
+  .ev .muted { font-size: 12px; }
+  .crowd { font-size: 12px; font-weight: 700; color: var(--danger); margin-top: 4px; }
+  .rub { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; table-layout: fixed; }
+  .rub th, .rub td { border: 1px solid var(--border); padding: 8px; vertical-align: top; text-align: left; white-space: pre-wrap; word-break: keep-all; }
+  .rub thead th { background: var(--surface-2); text-align: center; }
+  .rub th.cr { background: var(--accent-soft); color: var(--accent); width: 22%; }
+  .rub .sc { display: block; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
+  .rubwrap { overflow-x: auto; }
+  .rub-edit { display: grid; gap: 10px; }
+  .re { padding: 12px; border-radius: 16px; background: var(--surface-2); display: grid; gap: 6px; }
+  .re-top { display: flex; gap: 6px; align-items: center; }
+  .re-top input { flex: 1; }
+  .cells { display: grid; gap: 6px; }
+  .cell { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: start; }
+  .cell .lv { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--text-2); }
+  .cell .lv input { width: 48px; padding: 6px; text-align: center; }
+  .cell textarea { min-height: 44px; }
+  .x { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 16px; }
+  .x:hover { color: var(--danger); }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .total { font-size: 13px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .levels { display: flex; gap: 6px; flex-wrap: wrap; }
+  .levels input { width: 84px; }
+  @media (min-width: 561px) { #editDialog, #viewDialog { width: min(820px, calc(100vw - 24px)); } }
+  @media print {
+    body > *:not(#viewDialog) { display: none !important; }
+    #viewDialog { position: static; box-shadow: none; border: 0; width: 100%; max-height: none; }
+    #viewDialog .actions, #viewDialog .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="assess"></span><h1>평가 계획·루브릭</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">⭐ ASSESSMENT</span>
+    <h2>평가 계획과 <span class="grad">채점 기준</span>을 한곳에</h2>
+    <p>과목별 반영 비율을 맞추고, 학년 평가 일정이 몰리지 않게 미리 확인해요. 학생 점수는 저장하지 않아요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sAll">0</b><span>평가 계획</span></div>
+      <div class="stat"><b id="sSoon">0</b><span>2주 안 평가</span></div>
+      <div class="stat"><b id="sBad">0</b><span>비율 확인 필요</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="plan" class="on">📋 과목별 계획</button>
+    <button type="button" data-t="month">🗓 월별 일정</button>
+  </nav>
+  <div class="filters">
+    <select id="grade" aria-label="학년"><option value="">모든 학년</option><option>1학년</option><option>2학년</option><option>3학년</option></select>
+    <select id="sem" aria-label="학기"><option>1학기</option><option>2학기</option></select>
+  </div>
+  <section id="list"></section>
+</main>
+<button class="btn fab" id="newBtn" type="button">＋ 평가 추가</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">평가 추가</h2>
+  <div class="three">
+    <div><label for="eSubject">과목</label><input id="eSubject" required maxlength="12" list="subjList" placeholder="예: 국어"></div>
+    <div><label for="eGrade">학년</label><select id="eGrade"><option>1학년</option><option>2학년</option><option>3학년</option></select></div>
+    <div><label for="eSem">학기</label><select id="eSem"><option>1학기</option><option>2학기</option></select></div>
+  </div>
+  <datalist id="subjList"></datalist>
+  <div class="two">
+    <div><label for="eKind">종류</label><select id="eKind"><option>수행평가</option><option>지필평가</option></select></div>
+    <div><label for="eWeight">반영 비율 (%)</label><input id="eWeight" type="number" min="0" max="100" step="0.1" required></div>
+  </div>
+  <label for="eTitle">평가 이름</label><input id="eTitle" required maxlength="60" placeholder="예: 비유 표현을 활용한 시 쓰기">
+  <div class="two">
+    <div><label for="eDate">시작일</label><input id="eDate" type="date" required></div>
+    <div><label for="eEnd">종료일 (선택)</label><input id="eEnd" type="date"></div>
+  </div>
+  <label for="eArea">평가 영역·성취기준</label><input id="eArea" maxlength="120" placeholder="예: [9국05-03] 비유와 상징의 표현 효과를 파악한다.">
+  <label for="eDesc">평가 방법·유의점</label><textarea id="eDesc" style="min-height:56px"></textarea>
+  <label>채점 기준표(루브릭) 단계</label>
+  <div class="levels" id="eLevels"></div>
+  <div class="row" style="margin-top:6px"><button class="btn small ghost" id="lvAdd" type="button">＋ 단계</button><button class="btn small ghost" id="lvDel" type="button">－ 단계</button></div>
+  <label>평가 요소</label>
+  <div class="rub-edit" id="eRub"></div>
+  <button class="btn small ghost" id="crAdd" type="button" style="margin-top:6px">＋ 평가 요소 추가</button>
+  <div class="total" id="eTotal"></div>
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="viewDialog">
+  <div id="vBody"></div>
+  <div class="actions"><button class="btn ghost" id="vCopy" type="button">📄 복제</button><button class="btn ghost" id="vPrint" type="button">🖨 인쇄</button><button class="btn ghost" id="vEdit" type="button">✏️ 수정</button><button class="btn" id="vClose" type="button">닫기</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, ymd, parse, addDays, DOW, md, fmt, dday } = U;
+const SUBJECTS = ["국어", "수학", "영어", "사회", "과학", "역사", "도덕", "기술·가정", "정보", "음악", "미술", "체육"];
+const PALETTE = ["#db2777", "#f43f5e", "#f97316", "#eab308", "#8b5cf6", "#0ea5e9", "#14b8a6"];
+let items = [], tab = "plan", editing = null, viewing = null, levels = [], rub = [];
+let month = new Date(); month.setDate(1);
+const today = ymd(new Date());
+$("sem").value = new Date().getMonth() >= 7 || new Date().getMonth() === 0 ? "2학기" : "1학기";
+
+App.init({ onMe: render });
+
+async function load() {
+  try { items = await Store.list("assessments"); } catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  items.forEach((x) => ["levels", "criteria"].forEach((k) => { if (typeof x[k] === "string") x[k] = JSON.parse(x[k]); }));
+  render();
+  if (viewing) paintView(viewing);
+}
+const maxOf = (x) => (x.criteria || []).reduce((n, c) => n + Math.max(0, ...(c.scores || []).map(Number).filter((v) => !isNaN(v))), 0);
+const groupKey = (x) => `${x.grade}|${x.subject}|${x.semester}`;
+function sums() {
+  const s = {};
+  items.forEach((x) => { const k = groupKey(x); s[k] = (s[k] || 0) + Number(x.weight || 0); });
+  return s;
+}
+
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  $("subjList").innerHTML = [...new Set([...items.map((x) => x.subject), ...SUBJECTS])].map((s) => `<option value="${esc(s)}">`).join("");
+  const s = sums();
+  $("sAll").textContent = items.length;
+  $("sSoon").textContent = items.filter((x) => x.date >= today && x.date <= ymd(addDays(new Date(), 14))).length;
+  $("sBad").textContent = Object.values(s).filter((v) => Math.abs(v - 100) > 0.01).length;
+  $("sem").classList.toggle("hidden", tab === "month");
+  tab === "plan" ? renderPlan(s) : renderMonth();
+}
+
+function renderPlan(s) {
+  const g = $("grade").value, sem = $("sem").value;
+  const rows = items.filter((x) => (!g || x.grade === g) && x.semester === sem);
+  const groups = {};
+  rows.forEach((x) => (groups[groupKey(x)] = groups[groupKey(x)] || []).push(x));
+  const keys = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
+  $("list").innerHTML = keys.map((k, gi) => {
+    const [gr, subj] = k.split("|"), list = groups[k].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const sum = Math.round(s[k] * 10) / 10, ok = Math.abs(sum - 100) <= 0.01;
+    return `<div class="card subj rise" style="animation-delay:${Math.min(gi, 8) * 40}ms">
+      <div class="subj-head"><span class="chip accent">${esc(gr)}</span><h3>${esc(subj)}</h3>
+        <span class="wsum ${ok ? "ok" : "bad"}">${ok ? "✓ 합계 100%" : `합계 ${sum}% · ${sum < 100 ? `${Math.round((100 - sum) * 10) / 10}% 부족` : `${Math.round((sum - 100) * 10) / 10}% 초과`}`}</span></div>
+      <div class="wbar" title="반영 비율">${list.map((x, i) => `<span style="width:${Math.min(100, x.weight)}%;background:${PALETTE[i % PALETTE.length]}" title="${esc(x.title)} ${x.weight}%"></span>`).join("")}</div>
+      ${list.map((x) => { const d = x.date ? parse(x.date) : null; return `<div class="as" data-id="${x.id}">
+        <div class="date">${d ? `${d.getMonth() + 1}/${d.getDate()}<small>${DOW[d.getDay()]}${x.date >= today ? " · " + dday(x.date) : ""}</small>` : "-"}</div>
+        <div><h4>${esc(x.title)}</h4><div class="muted"><span class="kind ${x.kind === "수행평가" ? "perf" : ""}">${esc(x.kind)}</span> ${(x.criteria || []).length ? `루브릭 ${x.criteria.length}요소 · ${maxOf(x)}점 만점` : "루브릭 없음"}</div></div>
+        <div class="pct">${x.weight}%</div></div>`; }).join("")}
+    </div>`;
+  }).join("") || App.empty(`${g || "모든 학년"} ${sem} 평가 계획이 없어요`, "오른쪽 아래 버튼으로 평가를 추가해 보세요.", "⭐");
+}
+
+function renderMonth() {
+  const g = $("grade").value, y = month.getFullYear(), m = month.getMonth();
+  const first = ymd(month), last = ymd(new Date(y, m + 1, 0));
+  const rows = items.filter((x) => (!g || x.grade === g) && x.date && x.date <= last && (x.end_date || x.date) >= first);
+  const days = {};
+  rows.forEach((x) => {
+    for (let d = parse(x.date < first ? first : x.date); ymd(d) <= (x.end_date || x.date) && ymd(d) <= last; d = addDays(d, 1)) {
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      (days[ymd(d)] = days[ymd(d)] || []).push(x);
+    }
+  });
+  const keys = Object.keys(days).sort();
+  $("list").innerHTML = `<div class="month-nav"><button class="btn small ghost" id="mPrev" type="button">‹</button><h3>${y}년 ${m + 1}월</h3><button class="btn small ghost" id="mNext" type="button">›</button></div>
+    <div class="card" style="padding:4px 16px">${keys.map((k) => {
+      const d = parse(k), list = days[k];
+      const byGrade = {}; list.forEach((x) => (byGrade[x.grade] = (byGrade[x.grade] || 0) + 1));
+      const crowded = Object.entries(byGrade).filter(([, n]) => n >= 3);
+      return `<div class="day"><div class="d ${k === today ? "today" : ""}">${d.getDate()}일<small>${DOW[d.getDay()]}요일</small></div><div>
+        ${list.map((x) => `<div class="ev" data-id="${x.id}"><b>${esc(x.grade)} ${esc(x.subject)}</b> · ${esc(x.title)}<div class="muted">${esc(x.kind)} ${x.weight}%${x.end_date && x.end_date !== x.date ? ` · ${md(x.date)}~${md(x.end_date)}` : ""}</div></div>`).join("")}
+        ${crowded.map(([gr, n]) => `<div class="crowd">⚠️ ${esc(gr)} 평가가 ${n}개 겹쳐요</div>`).join("")}</div></div>`;
+    }).join("") || `<div style="padding:12px 0">${App.empty("이 달에는 평가가 없어요", "", "🗓")}</div>`}</div>`;
+  $("mPrev").onclick = () => { month = new Date(y, m - 1, 1); render(); };
+  $("mNext").onclick = () => { month = new Date(y, m + 1, 1); render(); };
+}
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.t; render(); } };
+$("grade").onchange = render; $("sem").onchange = render;
+$("list").addEventListener("click", (e) => { const c = e.target.closest("[data-id]"); if (c) openView(c.dataset.id); });
+
+/* 편집 */
+function paintLevels() {
+  $("eLevels").innerHTML = levels.map((l, i) => `<input data-lv="${i}" value="${esc(l)}" maxlength="8" aria-label="${i + 1}단계 이름">`).join("");
+}
+function paintRub() {
+  $("eRub").innerHTML = rub.map((c, ci) => `<div class="re"><div class="re-top"><input data-c="${ci}" data-f="name" value="${esc(c.name)}" placeholder="평가 요소 (예: 표현의 참신성)"><button type="button" class="x" data-rm="${ci}" aria-label="요소 삭제">✕</button></div>
+    <div class="cells">${levels.map((l, li) => `<div class="cell"><div class="lv">${esc(l)}<input data-c="${ci}" data-s="${li}" type="number" min="0" step="0.5" value="${esc(c.scores[li] ?? "")}" aria-label="${esc(l)} 점수"></div>
+      <textarea data-c="${ci}" data-d="${li}" placeholder="${esc(l)} 수준의 모습">${esc(c.descs[li] || "")}</textarea></div>`).join("")}</div></div>`).join("");
+  paintTotal();
+}
+function paintTotal() { const m = maxOf({ criteria: rub }); $("eTotal").textContent = rub.length ? `총 ${m}점 만점` : ""; }
+function fit(c) { c.scores.length = levels.length; c.descs.length = levels.length; }
+$("eLevels").addEventListener("input", (e) => { levels[+e.target.dataset.lv] = e.target.value; });
+$("eLevels").addEventListener("change", paintRub);
+$("lvAdd").onclick = () => { if (levels.length >= 6) return; levels.push(`${levels.length + 1}단계`); rub.forEach((c) => { c.scores.push(0); c.descs.push(""); }); paintLevels(); paintRub(); };
+$("lvDel").onclick = () => { if (levels.length <= 2) return; levels.pop(); rub.forEach(fit); paintLevels(); paintRub(); };
+$("eRub").addEventListener("input", (e) => {
+  const t = e.target, c = rub[+t.dataset.c]; if (!c) return;
+  if (t.dataset.f) c.name = t.value;
+  if (t.dataset.s) { c.scores[+t.dataset.s] = t.value === "" ? "" : Number(t.value); paintTotal(); }
+  if (t.dataset.d) c.descs[+t.dataset.d] = t.value;
+});
+$("eRub").addEventListener("click", (e) => { if (e.target.dataset.rm) { rub.splice(+e.target.dataset.rm, 1); paintRub(); } });
+$("crAdd").onclick = () => { const top = 10; rub.push({ name: "", scores: levels.map((_, i) => Math.max(0, top - i * 2)), descs: levels.map(() => "") }); paintRub(); };
+
+function openEdit(x, copy) {
+  if (!App.need()) return;
+  editing = copy ? null : x || null;
+  $("editForm").reset();
+  $("eHead").textContent = copy ? "복제해서 새 평가 만들기" : x ? "평가 수정" : "평가 추가";
+  $("eSubject").value = x?.subject || "";
+  $("eGrade").value = x?.grade || $("grade").value || App.me.group.match(/^\d학년/)?.[0] || "1학년";
+  $("eSem").value = x?.semester || $("sem").value;
+  $("eKind").value = x?.kind || "수행평가";
+  $("eWeight").value = x?.weight ?? "";
+  $("eTitle").value = x ? x.title + (copy ? " (복제)" : "") : "";
+  $("eDate").value = x?.date || ""; $("eEnd").value = x?.end_date || "";
+  $("eArea").value = x?.area || ""; $("eDesc").value = x?.description || "";
+  levels = [...(x?.levels || ["매우 잘함", "잘함", "보통", "노력 필요"])];
+  rub = (x?.criteria || []).map((c) => ({ name: c.name, scores: [...c.scores], descs: [...c.descs] }));
+  if (!x) $("crAdd").click();
+  paintLevels(); paintRub();
+  $("eDel").classList.toggle("hidden", !(editing && editing.author === App.me.name));
+  $("editDialog").showModal();
+}
+$("newBtn").onclick = () => openEdit();
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const end = $("eEnd").value && $("eEnd").value > $("eDate").value ? $("eEnd").value : null;
+  const row = { subject: $("eSubject").value.trim(), grade: $("eGrade").value, semester: $("eSem").value, kind: $("eKind").value, weight: Number($("eWeight").value),
+    title: $("eTitle").value.trim(), date: $("eDate").value, end_date: end, area: $("eArea").value.trim(), description: $("eDesc").value.trim(),
+    levels: levels.map((l, i) => l.trim() || `${i + 1}단계`), criteria: rub.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), scores: c.scores.map((v) => (v === "" ? 0 : Number(v))), descs: c.descs })),
+    updated_at: new Date().toISOString(), updated_by: App.me.name };
+  if (editing) await Store.update("assessments", editing.id, row);
+  else await Store.insert("assessments", { ...row, author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => { if (!(await App.confirm("이 평가 계획을 삭제할까요?", "삭제"))) return; $("editDialog").close(); $("viewDialog").close(); await Store.remove("assessments", editing.id); load(); };
+
+/* 보기·인쇄 */
+function openView(id) { viewing = id; paintView(id); $("viewDialog").showModal(); }
+function paintView(id) {
+  const x = items.find((i) => i.id === id); if (!x) return;
+  const lv = x.levels || [];
+  $("vBody").innerHTML = `<div class="row"><span class="chip accent">${esc(x.grade)} ${esc(x.subject)}</span><span class="kind ${x.kind === "수행평가" ? "perf" : ""}">${esc(x.kind)}</span><span class="muted">${esc(x.semester)} · 반영 ${x.weight}%</span></div>
+    <h2 style="margin:10px 0 4px">${esc(x.title)}</h2>
+    <p class="muted" style="margin:0 0 10px">📅 ${x.date ? md(x.date) : ""}${x.end_date ? ` ~ ${md(x.end_date)}` : ""}${(x.criteria || []).length ? ` · ${maxOf(x)}점 만점` : ""}</p>
+    ${x.area ? `<p style="margin:6px 0"><b>평가 영역·성취기준</b><br>${esc(x.area)}</p>` : ""}
+    ${x.description ? `<p style="margin:6px 0;white-space:pre-wrap"><b>평가 방법·유의점</b><br>${esc(x.description)}</p>` : ""}
+    ${(x.criteria || []).length ? `<div class="rubwrap"><table class="rub"><thead><tr><th>평가 요소</th>${lv.map((l) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>
+      ${x.criteria.map((c) => `<tr><th class="cr">${esc(c.name)}</th>${lv.map((_, i) => `<td><span class="sc">${c.scores[i] ?? ""}점</span>${esc(c.descs[i] || "")}</td>`).join("")}</tr>`).join("")}
+    </tbody></table></div>` : `<p class="muted">아직 채점 기준표가 없어요.</p>`}
+    <p class="muted no-print" style="font-size:12px;margin-top:12px">작성 ${esc(x.author)}${x.updated_by ? ` · 마지막 수정 ${esc(x.updated_by)} ${fmt(x.updated_at)}` : ""}</p>`;
+}
+$("vEdit").onclick = () => openEdit(items.find((i) => i.id === viewing));
+$("vCopy").onclick = () => openEdit(items.find((i) => i.id === viewing), true);
+$("vPrint").onclick = () => window.print();
+$("vClose").onclick = () => $("viewDialog").close();
+$("viewDialog").addEventListener("close", () => { viewing = null; });
+
+Store.subscribe("assessments", load);
+render(); load();
+</script>
+</body>
+</html>
