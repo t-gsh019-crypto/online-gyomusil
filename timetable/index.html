@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시간표·수업 교체</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%238b5cf6'/%3E%3Cpath d='M18 26h22l-6-6M46 38H24l6 6' stroke='%23fff' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #8b5cf6; --accent-2: #ec4899; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0 12px; }
+  .bar select, .bar input[type=date], .bar input[type=month] { width: auto; min-width: 120px; }
+  .week-nav { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; }
+  .week-nav h3 { margin: 0; flex: 1; font-size: 19px; font-weight: 800; letter-spacing: -0.03em; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 19px; cursor: pointer; display: grid; place-items: center; flex: none; }
+  .icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .seg { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--surface-2); gap: 2px; }
+  .seg button { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 14px; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button.on { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+
+  /* 시간표 격자 */
+  .tt { padding: 10px; overflow-x: auto; }
+  .tt table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; min-width: 340px; }
+  .tt th { font-size: 12px; font-weight: 700; color: var(--text-2); padding: 4px 0; }
+  .tt th small { display: block; font-weight: 600; opacity: .7; }
+  .tt th.today { color: var(--accent); }
+  .tt td.p { width: 30px; text-align: center; font-size: 12px; font-weight: 800; color: var(--text-2); }
+  .cell { height: 58px; border-radius: 12px; background: var(--surface-2); padding: 5px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 1px; font-size: 12px; line-height: 1.25; position: relative; overflow: hidden; transition: .2s var(--ease); }
+  .cell b { font-size: 14px; letter-spacing: -0.02em; }
+  .cell span { color: var(--text-2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell.has { background: color-mix(in srgb, var(--accent) 13%, var(--surface)); }
+  .cell.has b { color: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+  .cell.moved { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, transparent 6px 12px); }
+  .cell.moved b { text-decoration: line-through; color: var(--text-2); }
+  .cell.added { background: var(--grad); }
+  .cell.added b, .cell.added span { color: #fff; }
+  .cell.pending { outline: 2px dashed #f5a524; outline-offset: -2px; }
+  .cell.self { background: color-mix(in srgb, #f5a524 18%, var(--surface)); }
+  .cell .tag { position: absolute; top: 3px; right: 4px; font-size: 9px; font-weight: 800; }
+  .editing .cell { cursor: pointer; outline: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+  .editing .cell:hover { background: var(--accent-soft); }
+  .legend-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+  .legend-row i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; }
+
+  /* 도우미 */
+  .steps { display: flex; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); margin: 4px 0 14px; }
+  .steps span { background: var(--surface-2); padding: 5px 10px; border-radius: 999px; }
+  .steps b { color: var(--accent); }
+  .lesson { display: grid; gap: 10px; margin-bottom: 12px; }
+  .lesson .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lesson .pno { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--grad); color: #fff; font-weight: 800; flex: none; }
+  .lesson .what b { font-size: 17px; }
+  .opts { display: grid; gap: 8px; }
+  .opt { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px; border-radius: 14px; background: var(--surface-2); }
+  .opt .who { font-weight: 800; }
+  .opt .why { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .opt .why .chip { font-size: 11px; }
+  .opt .chip.good { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .opt .chip.bad { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .score { font-size: 12px; font-weight: 800; color: var(--accent); }
+  .moves { display: grid; gap: 4px; font-size: 13px; margin-top: 4px; }
+  .moves div::before { content: "↪ "; color: var(--accent); font-weight: 800; }
+
+  /* 요청 카드 */
+  .req { display: grid; gap: 8px; margin-bottom: 10px; }
+  .req .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .status { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .status.wait { background: color-mix(in srgb, #f5a524 18%, transparent); color: #b45309; }
+  .status.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+  .status.no { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .kind { font-size: 12px; font-weight: 800; color: #fff; background: var(--grad); padding: 3px 9px; border-radius: 999px; }
+  .appr { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+  .section-title { font-size: 15px; font-weight: 800; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .count { background: var(--danger); color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 7px; }
+  .memo { font-size: 13px; background: var(--accent-soft); color: var(--text); padding: 8px 10px; border-radius: 10px; }
+
+  /* 오늘의 변경 · 통계 표 */
+  .board { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14px; }
+  #statTable { min-width: 0; }
+  .board th { text-align: left; font-size: 12px; color: var(--text-2); padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  .board td { padding: 10px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .board td.p { font-weight: 800; color: var(--accent); }
+  .meter { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; min-width: 60px; }
+  .meter i { display: block; height: 100%; background: var(--grad); border-radius: 99px; }
+  textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; min-height: 160px; }
+  .hint { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+  .hint.warn { color: var(--danger); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stack { display: grid; gap: 12px; }
+
+  @media print {
+    .topbar, .hero, .pills, .fab, .no-print, .banner { display: none !important; }
+    body { background: #fff; color: #000; }
+    .card { box-shadow: none; border: 0; backdrop-filter: none; }
+    .board { font-size: 13pt; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <svg class="app-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="ig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
+      <rect width="64" height="64" rx="16" fill="url(#ig)"/>
+      <rect x="12" y="14" width="40" height="36" rx="6" fill="#fff" opacity=".22"/>
+      <path d="M12 26h40M12 38h40M25 14v36M39 14v36" stroke="#fff" stroke-opacity=".45" stroke-width="2"/>
+      <path d="M17 31h20l-5-5M47 33H27l5 5" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>시간표·수업 교체</h1>
+    <button class="me-chip" id="meChip" type="button">내 정보</button>
+    <a class="home-link" href="../">← 메인</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">🔄 TIMETABLE</span>
+    <h2>시간표와 <span class="grad">수업 교체·보강</span></h2>
+    <p>출장·연가 날짜만 고르면 교체할 수 있는 수업과 보강 선생님을 자동으로 찾아줘요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sMine">0</b><span>오늘 내 수업</span></div>
+      <div class="stat"><b id="sInbox">0</b><span>내 승인 기다림</span></div>
+      <div class="stat"><b id="sToday">0</b><span>오늘 교체·보강</span></div>
+    </div>
+  </section>
+
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="grid" class="on">📅 시간표</button>
+    <button type="button" data-t="helper">🧭 교체·보강 도우미</button>
+    <button type="button" data-t="requests">📨 요청함 <span class="count hidden" id="inboxCount"></span></button>
+    <button type="button" data-t="board">📋 오늘의 변경</button>
+    <button type="button" data-t="stats">📊 통계·이력</button>
+    <button type="button" data-t="manage">⚙️ 입력·관리</button>
+  </nav>
+
+  <!-- 📅 시간표 -->
+  <section id="v-grid">
+    <div class="bar">
+      <div class="seg" id="gridMode"><button type="button" data-m="teacher" class="on">교사별</button><button type="button" data-m="class">학급별</button></div>
+      <select id="whoSel" aria-label="선생님 또는 학급"></select>
+      <span class="grow"></span>
+      <button class="btn small ghost" id="editBtn" type="button">✏️ 내 시간표 입력</button>
+    </div>
+    <div class="week-nav">
+      <h3 id="weekTitle"></h3>
+      <button class="icon-btn" id="prevW" type="button" aria-label="이전 주">‹</button>
+      <button class="icon-btn" id="thisW" type="button" style="font-size:12px;font-weight:800">오늘</button>
+      <button class="icon-btn" id="nextW" type="button" aria-label="다음 주">›</button>
+    </div>
+    <div class="banner hidden" id="editBanner" style="background:var(--accent-soft);color:var(--accent)">✏️ 입력 모드예요. 칸을 눌러 학급·과목을 넣어요. 엑셀에서 한 번에 붙여넣으려면 [⚙️ 입력·관리] 탭을 쓰세요.</div>
+    <div class="card tt rise" id="grid"></div>
+    <div class="legend-row">
+      <span><i style="background:color-mix(in srgb, var(--accent) 25%, var(--surface))"></i>정규 수업</span>
+      <span><i style="background:var(--grad)"></i>교체·보강으로 생긴 수업</span>
+      <span><i style="background:repeating-linear-gradient(135deg,var(--border) 0 3px,transparent 3px 6px)"></i>옮겨진 수업</span>
+      <span><i style="outline:2px dashed #f5a524;outline-offset:-2px"></i>승인 대기</span>
+    </div>
+  </section>
+
+  <!-- 🧭 도우미 -->
+  <section id="v-helper" class="hidden">
+    <div class="steps"><span><b>1</b> 날짜·사유 고르기</span><span><b>2</b> 수업마다 교체·보강·자습 고르기</span><span><b>3</b> 상대 선생님 승인 → 시간표 자동 반영</span></div>
+    <div class="card stack">
+      <div class="two">
+        <div><label for="hDate" style="margin-top:0">날짜</label><input id="hDate" type="date"></div>
+        <div><label for="hReason" style="margin-top:0">사유</label>
+          <select id="hReason"><option>출장</option><option>연가</option><option>병가</option><option>조퇴</option><option>학교 행사</option><option>연수</option><option>기타</option></select></div>
+      </div>
+      <div class="two">
+        <div><label for="hWho" style="margin-top:0">누구의 수업?</label><select id="hWho"></select></div>
+        <div><label for="hRange" style="margin-top:0">교체 찾을 범위</label>
+          <select id="hRange"><option value="0">같은 주</option><option value="1" selected>다음 주까지</option><option value="2">2주 뒤까지</option></select></div>
+      </div>
+      <p class="hint" style="margin:0">일과 담당 선생님은 다른 선생님 이름을 골라 대신 처리할 수 있어요.</p>
+    </div>
+    <div id="lessons" style="margin-top:14px"></div>
+  </section>
+
+  <!-- 📨 요청함 -->
+  <section id="v-requests" class="hidden">
+    <div class="section-title">📥 내 승인이 필요한 요청</div>
+    <div id="inbox"></div>
+    <div class="section-title">📤 내가 보낸 요청</div>
+    <div id="outbox"></div>
+  </section>
+
+  <!-- 📋 오늘의 변경 -->
+  <section id="v-board" class="hidden">
+    <div class="bar no-print">
+      <input id="bDate" type="date">
+      <span class="grow"></span>
+      <button class="btn small ghost" id="printBtn" type="button">🖨 인쇄·게시용</button>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:18px" id="boardTitle"></h3>
+      <div style="overflow-x:auto"><table class="board" id="board"></table></div>
+    </div>
+  </section>
+
+  <!-- 📊 통계·이력 -->
+  <section id="v-stats" class="hidden">
+    <div class="bar"><input id="sMonth" type="month"><span class="grow"></span><span class="muted">보강이 고르게 나뉘었는지 확인해요</span></div>
+    <div class="card" style="overflow-x:auto"><table class="board" id="statTable"></table></div>
+    <div class="section-title">🗂 처리된 이력</div>
+    <div class="bar"><input id="histSearch" type="search" placeholder="선생님·학급 검색"></div>
+    <div id="history"></div>
+  </section>
+
+  <!-- ⚙️ 입력·관리 -->
+  <section id="v-manage" class="hidden">
+    <div class="card stack">
+      <div>
+        <h3 style="margin:0">📋 내 시간표 엑셀에서 붙여넣기</h3>
+        <p class="hint">엑셀에서 <b>1~7교시 × 월~금</b> (7줄 5칸)을 복사해 붙여넣어요. 칸 내용은 <code>2-3 국어</code>처럼 학급과 과목을 띄어 써 주세요. 빈칸은 공강이에요.</p>
+      </div>
+      <textarea class="mono" id="myPaste" placeholder="2-3 국어	1-1 국어		2-3 국어	&#10;	2-1 국어	1-1 국어	…"></textarea>
+      <div class="row"><button class="btn small" id="myPasteBtn" type="button">내 시간표로 저장</button><span class="hint" id="myPasteMsg"></span></div>
+    </div>
+    <div class="card stack" style="margin-top:12px">
+      <div>
+        <h3 style="margin:0">🏫 학교 전체 시간표 한 번에 넣기 (일과 담당용)</h3>
+        <p class="hint">한 줄에 하나씩 <code>교사,요일,교시,학급,과목</code> 형식이에요. 예: <code>김민지,월,1,2-3,국어</code>. 엑셀에서 5칸을 복사해 붙여도 돼요. 붙여넣은 선생님의 기존 시간표는 새것으로 바뀌어요.</p>
+      </div>
+      <textarea class="mono" id="allPaste" placeholder="김민지,월,1,2-3,국어&#10;이수진,월,1,1-2,수학"></textarea>
+      <div class="row">
+        <button class="btn small" id="allPasteBtn" type="button">전체 시간표 저장</button>
+        <button class="btn small ghost" id="exportBtn" type="button">⤓ 지금 시간표 CSV로 받기</button>
+        <span class="hint" id="allPasteMsg"></span>
+      </div>
+    </div>
+    <div class="card stack" style="margin-top:12px" id="sampleBox">
+      <div><h3 style="margin:0">🧪 예시 시간표로 체험하기</h3>
+      <p class="hint">시간표가 비어 있을 때만 쓸 수 있어요. 선생님 6명의 예시 시간표가 들어가요.</p></div>
+      <div><button class="btn small ghost" id="sampleBtn" type="button">예시 시간표 넣기</button></div>
+    </div>
+  </section>
+</main>
+
+<button class="btn fab" id="fab" type="button">🧭 교체·보강 신청</button>
+
+<dialog id="meDialog">
+  <form method="dialog" id="meForm">
+    <h2>선생님 정보</h2>
+    <p class="muted">시간표와 교체 요청에 쓰여요. 이름은 시간표에 적힌 그대로 써 주세요.</p>
+    <label for="meName">이름</label>
+    <input id="meName" required maxlength="20" placeholder="예: 김민지">
+    <label for="meGroup">소속</label>
+    <select id="meGroup"></select>
+    <div class="actions"><button class="btn" value="ok">저장</button></div>
+  </form>
+</dialog>
+
+<dialog id="slotDialog">
+  <form method="dialog" id="slotForm">
+    <h2 id="slotHead"></h2>
+    <div class="two">
+      <div><label for="sClass">학급</label><input id="sClass" placeholder="예: 2-3" maxlength="10" list="classList"></div>
+      <div><label for="sSubject">과목</label><input id="sSubject" placeholder="예: 국어" maxlength="12" list="subjectList"></div>
+    </div>
+    <p class="hint">학급을 비우고 저장하면 공강이 돼요.</p>
+    <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+  </form>
+</dialog>
+<datalist id="classList"></datalist>
+<datalist id="subjectList"></datalist>
+
+<dialog id="sendDialog">
+  <form method="dialog" id="sendForm">
+    <h2>요청 보내기</h2>
+    <div class="moves" id="sendMoves"></div>
+    <label for="sendMemo">대신 수업하실 선생님께 메모 (선택)</label>
+    <textarea id="sendMemo" style="min-height:80px" placeholder="예: 교과서 54쪽 활동지 풀이, 학습지는 교무실 책상 위에 있어요."></textarea>
+    <p class="hint" id="sendWho"></p>
+    <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">요청 보내기</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script>
+const GROUPS = SCHOOL.depts.map((d) => d.name);
+const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
+const dowOf = (s) => parse(s).getDay();
+const md = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`; };
+const fmt = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const dayDiff = (a, b) => Math.round((parse(a) - parse(b)) / 864e5);
+const todayKey = () => ymd(new Date());
+
+let slots = [], reqs = [], me = Me.get();
+let tab = "grid", gridMode = "teacher", who = me?.name || "", weekStart = monday(new Date()), editing = false, editCell = null;
+let openPanel = null;   // 도우미에서 펼친 수업 {key, type}
+let pendingSend = null; // 보내기 전 요청
+
+if (Store.mode === "local") $("modeBanner").classList.remove("hidden");
+$("meGroup").innerHTML = GROUPS.map((g) => `<option>${g}</option>`).join("");
+$("hDate").value = $("bDate").value = todayKey();
+$("sMonth").value = todayKey().slice(0, 7);
+
+function askMe() { $("meName").value = me?.name || ""; $("meGroup").value = GROUPS.includes(me?.group) ? me.group : GROUPS[0]; $("meDialog").showModal(); }
+$("meForm").addEventListener("submit", () => { me = { name: $("meName").value.trim(), group: $("meGroup").value }; Me.set(me); who = me.name; paintMe(); render(); });
+$("meChip").onclick = askMe;
+function paintMe() { $("meChip").textContent = me ? `👤 ${me.name}` : "내 정보"; $("meChip").title = me ? `${me.name} · ${me.group} (눌러서 바꾸기)` : ""; }
+
+/* ───────── 시간표 계산 ─────────
+   요청(req) 하나에는 수업 이동(items)이 여러 개 들어 있어요.
+   item = { class_name, subject, from_teacher, from_date, from_period, to_teacher, to_date, to_period }
+   보강: 같은 시간에 다른 선생님 / 교체: 두 선생님 수업 시간 맞바꿈 / 연쇄 교체: 세 선생님 / 자습: to_teacher 없음 */
+const teachers = () => [...new Set([...slots.map((s) => s.teacher), ...(me ? [me.name] : [])])].sort((a, b) => a.localeCompare(b, "ko"));
+const classes = () => [...new Set(slots.map((s) => s.class_name))].sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+const baseSlot = (t, dow, p) => slots.find((s) => s.teacher === t && s.dow === dow && s.period === p);
+const live = (withPending) => reqs.filter((r) => r.status === "승인" || (withPending && r.status === "대기"));
+
+function effective(t, date, p, withPending = false) {
+  const base = baseSlot(t, dowOf(date), p);
+  let cell = base ? { class_name: base.class_name, subject: base.subject, state: "base" } : null;
+  for (const r of live(withPending)) for (const it of r.items) {
+    if (it.from_teacher === t && it.from_date === date && it.from_period === p && cell) {
+      const note = !it.to_teacher ? "자습" : it.to_teacher === t ? `${md(it.to_date)} ${it.to_period}교시로` : `${it.to_teacher} 선생님`;
+      cell = { ...cell, state: "moved", note, pending: r.status === "대기" };
+    }
+  }
+  for (const r of live(withPending)) for (const it of r.items) {
+    if (it.to_teacher === t && it.to_date === date && it.to_period === p) {
+      cell = { class_name: it.class_name, subject: it.subject, state: "added", note: r.kind, pending: r.status === "대기" };
+    }
+  }
+  return cell;
+}
+const busy = (t, date, p, wp = true) => { const e = effective(t, date, p, wp); return !!e && e.state !== "moved"; };
+const lessonsOn = (t, date, wp) => PERIODS.filter((p) => busy(t, date, p, wp)).length;
+
+function classCell(cls, date, p) {
+  for (const t of teachers()) {
+    const e = effective(t, date, p, true);
+    if (e && e.class_name === cls && e.state !== "moved") return { ...e, teacher: t };
+  }
+  for (const r of live(true)) for (const it of r.items)
+    if (!it.to_teacher && it.class_name === cls && it.from_date === date && it.from_period === p) return { class_name: cls, subject: "자습", teacher: `(${it.from_teacher} 대신)`, state: "added", note: "자습", pending: r.status === "대기" };
+  return null;
+}
+// 이 수업에 이미 걸린 요청(대기·승인)
+const reqFor = (t, date, p) => reqs.find((r) => r.status !== "거절" && r.items.some((it) => it.from_teacher === t && it.from_date === date && it.from_period === p));
+const coverCount = (t, monthKey) => reqs.filter((r) => r.status === "승인" && r.created_at.slice(0, 7) === monthKey).reduce((n, r) => n + r.items.filter((it) => it.to_teacher === t && it.from_teacher !== t).length, 0);
+
+async function load() {
+  try { [slots, reqs] = await Promise.all([Store.list("tt_slots"), Store.list("tt_requests")]); }
+  catch (e) { $("grid").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  reqs.forEach((r) => { if (typeof r.items === "string") r.items = JSON.parse(r.items); if (typeof r.approvals === "string") r.approvals = JSON.parse(r.approvals); });
+  render();
+}
+
+/* ───────── 화면 ───────── */
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  for (const t of ["grid", "helper", "requests", "board", "stats", "manage"]) $("v-" + t).classList.toggle("hidden", tab !== t);
+  $("fab").classList.toggle("hidden", tab === "helper");
+  $("classList").innerHTML = classes().map((c) => `<option value="${esc(c)}">`).join("");
+  $("subjectList").innerHTML = [...new Set(slots.map((s) => s.subject).filter(Boolean))].map((s) => `<option value="${esc(s)}">`).join("");
+
+  const inbox = reqs.filter((r) => me && r.status === "대기" && r.approvals?.[me.name] === "대기");
+  $("sInbox").textContent = inbox.length;
+  $("inboxCount").textContent = inbox.length;
+  $("inboxCount").classList.toggle("hidden", !inbox.length);
+  const tk = todayKey();
+  $("sToday").textContent = live(false).reduce((n, r) => n + r.items.filter((it) => it.from_date === tk || it.to_date === tk).length, 0);
+  $("sMine").textContent = me ? lessonsOn(me.name, tk, false) : 0;
+
+  ({ grid: renderGrid, helper: renderHelper, requests: () => renderRequests(inbox), board: renderBoard, stats: renderStats, manage: renderManage })[tab]();
+}
+
+function renderGrid() {
+  [...$("gridMode").children].forEach((b) => b.classList.toggle("on", b.dataset.m === gridMode));
+  const list = gridMode === "teacher" ? teachers() : classes();
+  if (!list.includes(who)) who = gridMode === "teacher" ? (me?.name || list[0] || "") : (list[0] || "");
+  $("whoSel").innerHTML = list.length ? list.map((x) => `<option ${x === who ? "selected" : ""}>${esc(x)}</option>`).join("") : `<option>아직 입력된 시간표가 없어요</option>`;
+  const canEdit = gridMode === "teacher" && me && who === me.name;
+  $("editBtn").classList.toggle("hidden", !canEdit);
+  if (!canEdit) editing = false;
+  $("editBtn").textContent = editing ? "✅ 입력 끝내기" : "✏️ 내 시간표 입력";
+  $("editBanner").classList.toggle("hidden", !editing);
+
+  const days = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+  $("weekTitle").textContent = `${days[0].getMonth() + 1}/${days[0].getDate()} – ${days[4].getMonth() + 1}/${days[4].getDate()}`;
+  const tk = todayKey();
+  let html = `<table class="${editing ? "editing" : ""}"><thead><tr><th></th>${days.map((d) => `<th class="${ymd(d) === tk ? "today" : ""}">${DOW[d.getDay()]}<small>${d.getMonth() + 1}/${d.getDate()}</small></th>`).join("")}</tr></thead><tbody>`;
+  for (const p of PERIODS) {
+    html += `<tr><td class="p">${p}</td>`;
+    for (const d of days) {
+      const key = ymd(d);
+      let c;
+      if (editing) { const b = baseSlot(who, d.getDay(), p); c = b ? { ...b, state: "base" } : null; }
+      else c = gridMode === "teacher" ? effective(who, key, p, true) : classCell(who, key, p);
+      const cls = !c ? "" : (c.state === "added" ? (c.note === "자습" ? "self" : "has added") : c.state === "moved" ? "moved" : "has") + (c.pending ? " pending" : "");
+      const main = c ? esc(gridMode === "teacher" ? c.class_name : c.subject) : "";
+      const sub = !c ? "" : c.state === "moved" ? `→ ${esc(c.note)}` : esc(gridMode === "teacher" ? c.subject : c.teacher);
+      const tag = c && (c.state === "added" || c.pending) ? `<span class="tag">${c.pending ? "대기" : esc(c.note)}</span>` : "";
+      html += `<td><div class="cell ${cls}" data-dow="${d.getDay()}" data-p="${p}">${tag}<b>${main}</b><span>${sub}</span></div></td>`;
+    }
+    html += "</tr>";
+  }
+  $("grid").innerHTML = html + "</tbody></table>";
+  if (!slots.length && !editing) $("grid").insertAdjacentHTML("beforeend", `<p class="muted" style="text-align:center;margin:10px 0 4px">아직 시간표가 없어요. [✏️ 내 시간표 입력] 또는 [⚙️ 입력·관리] 탭에서 시작해 보세요.</p>`);
+}
+
+/* ───────── 도우미: 후보 찾기 ───────── */
+function rangeDates(date) {
+  const start = monday(parse(date)), weeks = +$("hRange").value + 1, out = [], tk = todayKey();
+  for (let w = 0; w < weeks; w++) for (let i = 0; i < 5; i++) { const k = ymd(addDays(start, w * 7 + i)); if (k >= tk) out.push(k); }
+  return out;
+}
+const slotLabel = (date, p) => `${md(date)} ${p}교시`;
+
+// 맞교환(2명)과 연쇄 교체(3명) 후보
+function swapOptions(L) {
+  const out = [], dates = rangeDates(L.date), A = L.teacher;
+  for (const B of teachers()) {
+    if (B === A) continue;
+    for (const d2 of dates) for (const p2 of PERIODS) {
+      if (d2 === L.date && p2 === L.period) continue;
+      const eb = effective(B, d2, p2, true);
+      if (!eb || eb.state !== "base" || eb.class_name !== L.class_name || busy(A, d2, p2)) continue;
+      const moveA = { class_name: L.class_name, subject: L.subject, from_teacher: A, from_date: L.date, from_period: L.period, to_teacher: A, to_date: d2, to_period: p2 };
+      const moveB = { class_name: L.class_name, subject: eb.subject, from_teacher: B, from_date: d2, from_period: p2, to_teacher: B, to_date: L.date, to_period: L.period };
+      const bx = effective(B, L.date, L.period, true);
+      const near = Math.abs(dayDiff(d2, L.date));
+      if (!bx || bx.state === "moved") {
+        out.push({ kind: "교체", who: [B], items: [moveA, moveB], score: 100 - near * 6 + (d2 === L.date ? 8 : 0),
+          why: [d2 === L.date ? ["같은 날 맞교환", "good"] : [`${near}일 차이`, ""], [`${B} 선생님 ${slotLabel(d2, p2)} ↔`, ""]] });
+      } else if (bx.state === "base") {
+        // B가 그 시간에 다른 반(d) 수업 중 → C 선생님과 d반 수업을 한 번 더 바꾸는 연쇄 교체
+        for (const C of teachers()) {
+          if (C === A || C === B || busy(C, L.date, L.period)) continue;
+          for (const d3 of dates) for (const p3 of PERIODS) {
+            if ((d3 === d2 && p3 === p2) || (d3 === L.date && p3 === L.period)) continue;
+            const ec = effective(C, d3, p3, true);
+            if (!ec || ec.state !== "base" || ec.class_name !== bx.class_name || busy(B, d3, p3)) continue;
+            out.push({ kind: "연쇄 교체", who: [B, C], score: 60 - near * 6 - Math.abs(dayDiff(d3, L.date)) * 3,
+              items: [moveA, moveB,
+                { class_name: bx.class_name, subject: bx.subject, from_teacher: B, from_date: L.date, from_period: L.period, to_teacher: B, to_date: d3, to_period: p3 },
+                { class_name: bx.class_name, subject: ec.subject, from_teacher: C, from_date: d3, from_period: p3, to_teacher: C, to_date: L.date, to_period: L.period }],
+              why: [["3명 연쇄", "bad"], [`${B}·${C} 선생님`, ""]] });
+            break;
+          }
+        }
+      }
+    }
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 8);
+}
+
+// 보강 후보: 비어 있는 선생님을 점수로 줄 세우기 (그 반 수업 여부, 같은 과목, 공강 사이 여부, 그날 수업 수, 이번 달 보강 횟수)
+function coverOptions(L) {
+  const month = L.date.slice(0, 7), out = [];
+  for (const T of teachers()) {
+    if (T === L.teacher || busy(T, L.date, L.period)) continue;
+    const mine = slots.filter((s) => s.teacher === T);
+    const knows = mine.some((s) => s.class_name === L.class_name);
+    const same = L.subject && mine.some((s) => s.subject === L.subject);
+    const load = lessonsOn(T, L.date, true);
+    const adj = busy(T, L.date, L.period - 1) || busy(T, L.date, L.period + 1);
+    const cc = coverCount(T, month);
+    const score = 50 + (knows ? 25 : 0) + (same ? 15 : 0) + (adj ? 8 : 0) - load * 5 - cc * 7 - (load >= 5 ? 20 : 0);
+    const why = [];
+    if (knows) why.push(["이 반 수업함", "good"]);
+    if (same) why.push(["같은 과목", "good"]);
+    if (adj) why.push(["앞뒤 수업과 이어짐", "good"]);
+    why.push([`그날 ${load}시간`, load >= 5 ? "bad" : ""]);
+    why.push([`이번 달 보강 ${cc}회`, cc >= 3 ? "bad" : ""]);
+    out.push({ kind: "보강", who: [T], score, why,
+      items: [{ class_name: L.class_name, subject: L.subject, from_teacher: L.teacher, from_date: L.date, from_period: L.period, to_teacher: T, to_date: L.date, to_period: L.period }] });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 8);
+}
+
+function renderHelper() {
+  const ts = teachers();
+  const cur = $("hWho").value || me?.name || "";
+  $("hWho").innerHTML = ts.map((t) => `<option ${t === cur ? "selected" : ""}>${esc(t)}</option>`).join("");
+  const T = $("hWho").value, date = $("hDate").value;
+  if (!T || !date) { $("lessons").innerHTML = '<p class="muted">선생님 정보를 먼저 입력해 주세요.</p>'; return; }
+  const dow = dowOf(date);
+  if (dow === 0 || dow === 6) { $("lessons").innerHTML = '<div class="empty"><b>주말이에요</b>평일 날짜를 골라 주세요.</div>'; return; }
+  const ls = PERIODS.map((p) => ({ p, e: effective(T, date, p, true) })).filter((x) => x.e && x.e.state !== "moved" || (x.e && reqFor(T, date, x.p)));
+  if (!ls.length) { $("lessons").innerHTML = `<div class="empty"><b>${esc(T)} 선생님은 ${md(date)}에 수업이 없어요</b>시간표가 비어 있다면 [⚙️ 입력·관리]에서 먼저 넣어 주세요.</div>`; return; }
+
+  $("lessons").innerHTML = ls.map(({ p, e }, i) => {
+    const key = `${date}|${p}`;
+    const r = reqFor(T, date, p);
+    const L = { teacher: T, date, period: p, class_name: e.class_name, subject: e.subject };
+    let body = "";
+    if (r) {
+      const st = r.status === "승인" ? "ok" : "wait";
+      body = `<div class="row"><span class="kind">${r.kind}</span><span class="status ${st}">${r.status === "승인" ? "처리 완료" : "승인 대기"}</span><span class="muted">${r.items.filter((it) => it.from_teacher === T && it.from_date === date && it.from_period === p).map((it) => it.to_teacher ? (it.to_teacher === T ? `${slotLabel(it.to_date, it.to_period)}로 이동` : `${it.to_teacher} 선생님이 맡음`) : "자습").join("")}</span></div>`;
+    } else {
+      const type = openPanel?.key === key ? openPanel.type : null;
+      body = `<div class="row">
+        <button class="btn small ${type === "swap" ? "" : "ghost"}" data-open="swap" data-key="${key}">🔄 교체 찾기</button>
+        <button class="btn small ${type === "cover" ? "" : "ghost"}" data-open="cover" data-key="${key}">🙋 보강 찾기</button>
+        <button class="btn small ghost" data-self="${key}">📖 자습 처리</button></div>`;
+      if (type) {
+        const opts = type === "swap" ? swapOptions(L) : coverOptions(L);
+        window.__opts = window.__opts || {};
+        window.__opts[key] = opts;
+        body += `<div class="opts">${opts.map((o, j) => `<div class="opt">
+            <div><div class="who">${o.kind === "보강" ? "🙋" : o.kind === "교체" ? "🔄" : "🔗"} ${esc(o.who.join(" · "))} <span class="score">${j === 0 ? "★ 추천" : ""}</span></div>
+              <div class="why">${o.why.map(([t, c]) => `<span class="chip ${c}">${esc(t)}</span>`).join("")}</div>
+              ${o.kind !== "보강" ? `<div class="moves">${o.items.map(moveText).join("")}</div>` : ""}</div>
+            <button class="btn small" data-pick="${j}" data-key="${key}">요청</button></div>`).join("")
+          || `<p class="muted" style="margin:0">${type === "swap" ? "범위 안에서 바꿀 수 있는 수업이 없어요. 범위를 넓히거나 보강을 찾아보세요." : "그 시간에 비어 있는 선생님이 없어요."}</p>`}</div>`;
+      }
+    }
+    return `<div class="card lesson rise" style="animation-delay:${i * 40}ms">
+      <div class="top"><span class="pno">${p}</span><div class="what"><b>${esc(e.class_name)}</b> <span class="muted">${esc(e.subject || "")}</span><div class="muted">${md(date)} ${p}교시</div></div></div>
+      ${body}</div>`;
+  }).join("");
+  window.__lessonCtx = { T, date, ls };
+}
+const moveText = (it) => `<div><b>${esc(it.class_name)}</b> ${esc(it.subject || "")}: ${esc(it.from_teacher)} ${slotLabel(it.from_date, it.from_period)} → ${it.to_teacher ? `${esc(it.to_teacher)} ${slotLabel(it.to_date, it.to_period)}` : "자습"}</div>`;
+
+$("lessons").onclick = (e) => {
+  const o = e.target.closest("[data-open]");
+  if (o) { openPanel = openPanel?.key === o.dataset.key && openPanel.type === o.dataset.open ? null : { key: o.dataset.key, type: o.dataset.open }; return renderHelper(); }
+  const pick = e.target.closest("[data-pick]");
+  if (pick) { const opt = window.__opts[pick.dataset.key][+pick.dataset.pick]; return askSend(opt.kind, opt.items); }
+  const self = e.target.closest("[data-self]");
+  if (self) {
+    const [date, p] = self.dataset.self.split("|"), T = $("hWho").value, ef = effective(T, date, +p, true);
+    askSend("자습", [{ class_name: ef.class_name, subject: ef.subject, from_teacher: T, from_date: date, from_period: +p, to_teacher: null, to_date: date, to_period: +p }]);
+  }
+};
+["hDate", "hReason", "hWho", "hRange"].forEach((id) => $(id).addEventListener("change", () => { openPanel = null; renderHelper(); }));
+
+function askSend(kind, items) {
+  if (!me) return askMe();
+  const need = [...new Set(items.map((it) => it.to_teacher).filter((t) => t && t !== me.name))];
+  pendingSend = { kind, items, need };
+  $("sendMoves").innerHTML = items.map(moveText).join("");
+  $("sendMemo").value = "";
+  $("sendWho").textContent = need.length ? `승인할 선생님: ${need.join(", ")} — 모두 승인하면 시간표에 반영돼요.` : "승인이 필요 없어서 바로 반영돼요.";
+  $("sendDialog").showModal();
+}
+$("sendForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok" || !pendingSend) return;
+  const { kind, items, need } = pendingSend;
+  const approvals = Object.fromEntries(need.map((t) => [t, "대기"]));
+  await Store.insert("tt_requests", {
+    kind, items, approvals, requester: me.name, reason: $("hReason").value, memo: $("sendMemo").value.trim() || null,
+    status: need.length ? "대기" : "승인", decided_at: need.length ? null : new Date().toISOString(),
+  });
+  pendingSend = null; openPanel = null;
+  load();
+});
+
+/* ───────── 요청함 ───────── */
+function reqCard(r, actions) {
+  const st = r.status === "대기" ? "wait" : r.status === "승인" ? "ok" : "no";
+  const appr = Object.entries(r.approvals || {}).map(([t, s]) => `<span class="status ${s === "승인" ? "ok" : s === "거절" ? "no" : "wait"}">${esc(t)} ${s}</span>`).join("");
+  return `<div class="card req rise">
+    <div class="top"><span class="kind">${esc(r.kind)}</span><b>${esc(r.requester)}</b><span class="muted">${esc(r.reason || "")}</span><span class="grow"></span><span class="status ${st}">${r.status}</span></div>
+    <div class="moves">${r.items.map(moveText).join("")}</div>
+    ${r.memo ? `<div class="memo">📝 ${esc(r.memo)}</div>` : ""}
+    ${appr ? `<div class="appr">${appr}</div>` : ""}
+    <div class="muted" style="font-size:12px">신청 ${fmt(r.created_at)}${r.decided_at ? " · 처리 " + fmt(r.decided_at) : ""}</div>
+    ${actions ? `<div class="row" style="justify-content:flex-end">${actions}</div>` : ""}
+  </div>`;
+}
+function renderRequests(inbox) {
+  if (!me) { $("inbox").innerHTML = $("outbox").innerHTML = '<p class="muted">선생님 정보를 먼저 입력해 주세요.</p>'; return; }
+  $("inbox").innerHTML = inbox.map((r) => reqCard(r, `<button class="btn small danger" data-act="no" data-id="${r.id}">거절</button><button class="btn small" data-act="ok" data-id="${r.id}">승인</button>`)).join("")
+    || '<p class="muted">승인을 기다리는 요청이 없어요.</p>';
+  const out = reqs.filter((r) => r.requester === me.name).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  $("outbox").innerHTML = out.map((r) => reqCard(r, r.status === "대기" ? `<button class="btn small ghost" data-act="cancel" data-id="${r.id}">신청 취소</button>` : r.status === "승인" ? `<button class="btn small ghost" data-act="undo" data-id="${r.id}">되돌리기</button>` : "")).join("")
+    || '<p class="muted">보낸 요청이 없어요.</p>';
+}
+$("inbox").onclick = $("outbox").onclick = async (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const r = reqs.find((x) => x.id === b.dataset.id); if (!r) return;
+  const act = b.dataset.act;
+  if (act === "cancel" || act === "undo") await Store.remove("tt_requests", r.id);
+  else {
+    const approvals = { ...r.approvals, [me.name]: act === "ok" ? "승인" : "거절" };
+    const vals = Object.values(approvals);
+    const status = vals.includes("거절") ? "거절" : vals.every((v) => v === "승인") ? "승인" : "대기";
+    // 승인 직전에 그 사이 다른 교체로 겹치지 않았는지 확인
+    if (status === "승인") {
+      const clash = r.items.find((it) => it.to_teacher && reqs.some((o) => o.id !== r.id && o.status === "승인" && o.items.some((x) => x.to_teacher === it.to_teacher && x.to_date === it.to_date && x.to_period === it.to_period)));
+      if (clash) { alertBox(`${clash.to_teacher} 선생님의 ${slotLabel(clash.to_date, clash.to_period)}에 이미 다른 교체가 있어요. 요청한 선생님께 다시 신청해 달라고 해 주세요.`); return; }
+    }
+    await Store.update("tt_requests", r.id, { approvals, status, decided_at: status === "대기" ? null : new Date().toISOString() });
+  }
+  load();
+};
+function alertBox(msg) {
+  const d = document.createElement("dialog");
+  d.innerHTML = `<h2>확인해 주세요</h2><p>${esc(msg)}</p><div class="actions"><button class="btn">확인</button></div>`;
+  d.querySelector("button").onclick = () => d.remove();
+  document.body.append(d); d.showModal();
+}
+
+/* ───────── 오늘의 변경 (게시·인쇄용) ───────── */
+// 그 시간 그 반의 원래(정규) 수업
+function origAt(cls, date, p) {
+  const s = slots.find((x) => x.class_name === cls && x.dow === dowOf(date) && x.period === p);
+  return s ? `${s.teacher} · ${s.subject || ""}` : "(수업 없음)";
+}
+function renderBoard() {
+  const date = $("bDate").value;
+  $("boardTitle").textContent = `📋 ${md(date)} 수업 변경 안내`;
+  const rows = [];
+  for (const r of live(false)) for (const it of r.items) {
+    if (it.to_date === date && it.to_teacher && !(it.from_teacher === it.to_teacher && it.from_date === it.to_date && it.from_period === it.to_period))
+      rows.push({ p: it.to_period, cls: it.class_name, before: origAt(it.class_name, date, it.to_period),
+        after: `${it.to_teacher} · ${it.subject || ""}${it.from_date !== date || it.from_period !== it.to_period ? ` (${slotLabel(it.from_date, it.from_period)}에서 옮김)` : ""}`, kind: r.kind, reason: r.reason });
+    if (!it.to_teacher && it.from_date === date)
+      rows.push({ p: it.from_period, cls: it.class_name, before: `${it.from_teacher} · ${it.subject || ""}`, after: "자습", kind: "자습", reason: r.reason });
+  }
+  rows.sort((a, b) => a.p - b.p || a.cls.localeCompare(b.cls, "ko", { numeric: true }));
+  $("board").innerHTML = `<thead><tr><th>교시</th><th>학급</th><th>원래</th><th>바뀐 수업</th><th>구분</th><th>사유</th></tr></thead><tbody>${
+    rows.map((x) => `<tr><td class="p">${x.p}</td><td><b>${esc(x.cls)}</b></td><td>${esc(x.before)}</td><td><b>${esc(x.after)}</b></td><td><span class="chip accent">${esc(x.kind)}</span></td><td class="muted">${esc(x.reason || "")}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="muted" style="text-align:center;padding:24px">이 날은 바뀐 수업이 없어요.</td></tr>`}</tbody>`;
+}
+$("bDate").onchange = renderBoard;
+$("printBtn").onclick = () => window.print();
+
+/* ───────── 통계·이력 ───────── */
+function renderStats() {
+  const m = $("sMonth").value;
+  const inMonth = live(false).filter((r) => r.items.some((it) => (it.to_date || it.from_date).slice(0, 7) === m));
+  const stat = teachers().map((t) => {
+    let cover = 0, swap = 0, asked = 0;
+    for (const r of inMonth) {
+      cover += r.items.filter((it) => r.kind === "보강" && it.to_teacher === t).length;
+      if (r.kind !== "보강" && r.kind !== "자습" && r.items.some((it) => it.to_teacher === t) && r.requester !== t) swap++;
+      if (r.requester === t) asked++;
+    }
+    return { t, cover, swap, asked };
+  });
+  const max = Math.max(1, ...stat.map((s) => s.cover));
+  $("statTable").innerHTML = `<thead><tr><th>선생님</th><th>맡은 보강</th><th></th><th>교체 협조</th><th>요청</th></tr></thead><tbody>${
+    stat.sort((a, b) => b.cover - a.cover || a.t.localeCompare(b.t, "ko")).map((s) => `<tr><td><b>${esc(s.t)}</b></td><td>${s.cover}회</td><td style="width:35%"><div class="meter"><i style="width:${(s.cover / max) * 100}%"></i></div></td><td>${s.swap}회</td><td>${s.asked}회</td></tr>`).join("")
+    || '<tr><td colspan="5" class="muted">아직 기록이 없어요.</td></tr>'}</tbody>`;
+  const q = $("histSearch").value.trim();
+  const hist = reqs.filter((r) => r.status !== "대기")
+    .filter((r) => !q || r.requester.includes(q) || r.items.some((it) => [it.class_name, it.to_teacher, it.from_teacher].some((x) => (x || "").includes(q))))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  $("history").innerHTML = hist.map((r) => reqCard(r)).join("") || '<p class="muted">아직 처리된 교체·보강이 없어요.</p>';
+}
+$("sMonth").onchange = renderStats;
+$("histSearch").oninput = renderStats;
+
+/* ───────── 입력·관리 ───────── */
+function renderManage() { $("sampleBox").classList.toggle("hidden", slots.length > 0); }
+const DOWMAP = { 월: 1, 화: 2, 수: 3, 목: 4, 금: 5 };
+async function replaceTeacher(t, rows) {
+  await Promise.all(slots.filter((s) => s.teacher === t).map((s) => Store.remove("tt_slots", s.id)));
+  for (const r of rows) await Store.insert("tt_slots", { teacher: t, ...r });
+}
+$("myPasteBtn").onclick = async () => {
+  if (!me) return askMe();
+  const lines = $("myPaste").value.replace(/\r/g, "").split("\n").filter((l, i, a) => l.trim() || i < a.length - 1).slice(0, 7);
+  const rows = [];
+  lines.forEach((line, i) => line.split("\t").slice(0, 5).forEach((cell, j) => {
+    const v = cell.trim().replace(/\s+/g, " ");
+    if (!v) return;
+    const [cls, ...rest] = v.split(" ");
+    rows.push({ dow: j + 1, period: i + 1, class_name: cls, subject: rest.join(" ") });
+  }));
+  if (!rows.length) { $("myPasteMsg").textContent = "붙여넣은 내용이 없어요."; return; }
+  await replaceTeacher(me.name, rows);
+  $("myPasteMsg").textContent = `✅ ${rows.length}칸 저장했어요.`;
+  $("myPaste").value = "";
+  load();
+};
+$("allPasteBtn").onclick = async () => {
+  const by = {}, bad = [];
+  $("allPaste").value.replace(/\r/g, "").split("\n").forEach((line, i) => {
+    if (!line.trim()) return;
+    const f = line.split(/\t|,/).map((x) => x.trim());
+    const dow = DOWMAP[f[1]?.[0]], period = parseInt(f[2], 10);
+    if (!f[0] || !dow || !period || !f[3]) return bad.push(i + 1);
+    (by[f[0]] = by[f[0]] || []).push({ dow, period, class_name: f[3], subject: f[4] || "" });
+  });
+  const names = Object.keys(by);
+  if (!names.length) { $("allPasteMsg").textContent = "읽을 수 있는 줄이 없어요. 형식을 확인해 주세요."; return; }
+  $("allPasteMsg").textContent = "저장하는 중…";
+  for (const t of names) await replaceTeacher(t, by[t]);
+  $("allPasteMsg").textContent = `✅ 선생님 ${names.length}명, ${names.reduce((n, t) => n + by[t].length, 0)}칸 저장${bad.length ? ` (읽지 못한 줄: ${bad.join(", ")})` : ""}`;
+  $("allPaste").value = "";
+  load();
+};
+$("exportBtn").onclick = () => {
+  const lines = ["교사,요일,교시,학급,과목", ...slots.slice().sort((a, b) => a.teacher.localeCompare(b.teacher, "ko") || a.dow - b.dow || a.period - b.period).map((s) => [s.teacher, DOW[s.dow], s.period, s.class_name, s.subject].join(","))];
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" }));
+  a.download = "시간표.csv"; a.click();
+};
+$("sampleBtn").onclick = async () => {
+  if (slots.length) return;
+  const T = [["김민지", "국어"], ["이수진", "수학"], ["박지훈", "영어"], ["최서연", "과학"], ["정우성", "사회"], ["한예린", "체육"]];
+  if (me && !T.some(([n]) => n === me.name)) T[0][0] = me.name;
+  const cls = ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2"];
+  for (const [ti, [name, subj]] of T.entries()) {
+    const rows = [];
+    for (let dow = 1; dow <= 5; dow++) for (const p of PERIODS) {
+      const c = (ti + dow + p) % 6;
+      if ((ti * 3 + dow * 5 + p * 7) % 10 < 6) rows.push({ dow, period: p, class_name: cls[(c + p) % 6], subject: subj });
+    }
+    // 같은 시간에 같은 반이 두 번 들어가지 않게 정리
+    for (const r of rows) if (!slots.some((s) => s.dow === r.dow && s.period === r.period && s.class_name === r.class_name)) {
+      const s = await Store.insert("tt_slots", { teacher: name, ...r });
+      slots.push(s);
+    }
+  }
+  load();
+};
+
+/* ───────── 이벤트 ───────── */
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.t; editing = false; render(); };
+$("gridMode").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; gridMode = b.dataset.m; who = gridMode === "teacher" ? (me?.name || "") : ""; editing = false; render(); };
+$("whoSel").onchange = () => { who = $("whoSel").value; render(); };
+$("prevW").onclick = () => { weekStart = addDays(weekStart, -7); render(); };
+$("nextW").onclick = () => { weekStart = addDays(weekStart, 7); render(); };
+$("thisW").onclick = () => { weekStart = monday(new Date()); render(); };
+$("editBtn").onclick = () => { editing = !editing; render(); };
+$("fab").onclick = () => { if (!me) return askMe(); tab = "helper"; $("hWho").value = me.name; render(); };
+
+$("grid").onclick = (e) => {
+  if (!editing) return;
+  const c = e.target.closest(".cell"); if (!c) return;
+  editCell = { dow: +c.dataset.dow, period: +c.dataset.p };
+  const b = baseSlot(me.name, editCell.dow, editCell.period);
+  $("slotHead").textContent = `${DOW[editCell.dow]}요일 ${editCell.period}교시`;
+  $("sClass").value = b?.class_name || "";
+  $("sSubject").value = b?.subject || slots.find((s) => s.teacher === me.name)?.subject || "";
+  $("slotDialog").showModal();
+};
+$("slotForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const b = baseSlot(me.name, editCell.dow, editCell.period);
+  const cls = $("sClass").value.trim(), subj = $("sSubject").value.trim();
+  if (!cls) { if (b) await Store.remove("tt_slots", b.id); }
+  else if (b) await Store.update("tt_slots", b.id, { class_name: cls, subject: subj });
+  else await Store.insert("tt_slots", { teacher: me.name, dow: editCell.dow, period: editCell.period, class_name: cls, subject: subj });
+  load();
+});
+
+Store.subscribe("tt_slots", load);
+Store.subscribe("tt_requests", load);
+paintMe(); render(); load();
+if (!me || !GROUPS.includes(me.group)) askMe();
+</script>
+</body>
+</html>
