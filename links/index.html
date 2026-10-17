@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>링크 모음</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #475569; --accent-2: #0ea5e9; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #94a3b8; } }
+  .bigsearch { position: relative; margin: 6px 0 10px; }
+  .bigsearch svg { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--text-2); }
+  .bigsearch input { padding: 15px 16px 15px 46px; font-size: 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .sec { font-size: 13px; font-weight: 800; color: var(--text-2); margin: 18px 2px 10px; display: flex; align-items: center; gap: 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { position: relative; display: grid; gap: 8px; padding: 14px; text-decoration: none; color: var(--text); }
+  .tile .ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 18px; box-shadow: 0 8px 16px -8px var(--c); background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 60%, #fff)); }
+  .tile b { font-size: 14px; letter-spacing: -0.02em; line-height: 1.3; }
+  .tile small { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .fav { position: absolute; top: 10px; right: 10px; border: 0; background: transparent; font-size: 16px; cursor: pointer; opacity: .25; padding: 2px; }
+  .tile .fav.on { opacity: 1; }
+  .tile .edit { position: absolute; bottom: 10px; right: 10px; border: 0; background: var(--surface-2); border-radius: 8px; font-size: 12px; padding: 3px 7px; cursor: pointer; color: var(--text-2); display: none; }
+  .editing .tile .edit { display: block; }
+  .mine-tag { font-size: 10px; font-weight: 800; color: var(--accent-2); }
+  .preset { display: grid; gap: 6px; max-height: 320px; overflow: auto; margin-top: 8px; }
+  .preset label { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--text); font-size: 14px; cursor: pointer; }
+  .preset input { width: 18px; height: 18px; accent-color: var(--accent-2); }
+  .preset small { color: var(--text-2); margin-left: auto; font-size: 12px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="links"></span><h1>링크 모음</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">🔗 QUICK LINKS</span>
+    <h2>자주 가는 곳 <span class="grad">한 번에 바로가기</span></h2>
+    <p>나이스, 업무포털, 교육청 사이트를 한곳에 모았어요. 검색하고 Enter를 누르면 바로 열려요.</p>
+  </section>
+  <label class="bigsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="사이트 이름으로 찾기 (예: 나이스)" aria-label="검색" autofocus></label>
+  <div class="row"><nav class="pills grow" id="cats" style="padding-bottom:0"></nav></div>
+  <div class="row" style="margin:6px 0 0"><span class="grow"></span><button class="btn small ghost" id="editToggle" type="button">✏️ 편집</button><button class="btn small ghost" id="presetBtn" type="button">✨ 추천 링크 넣기</button></div>
+  <div id="board"></div>
+</main>
+<button class="btn fab" id="addBtn" type="button">＋ 링크 추가</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">링크 추가</h2>
+  <label for="eUrl">주소</label><input id="eUrl" type="url" required placeholder="https://">
+  <label for="eTitle">이름</label><input id="eTitle" required maxlength="30" placeholder="예: 나이스 (교육행정정보시스템)">
+  <div class="two">
+    <div><label for="eCat">분류</label><select id="eCat"></select></div>
+    <div><label for="eScope">누가 볼까요?</label><select id="eScope"><option value="공용">모든 선생님 (공용)</option><option value="개인">나만 (개인 링크)</option></select></div>
+  </div>
+  <label for="eDesc">설명 (선택)</label><input id="eDesc" maxlength="40" placeholder="예: 성적·출결 입력">
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="presetDialog"><form method="dialog" id="presetForm">
+  <h2>추천 링크 넣기</h2>
+  <p class="muted" style="margin:0">고른 링크가 공용으로 추가돼요. 업무포털·K-에듀파인은 교육청마다 주소가 달라서 [＋ 링크 추가]로 직접 넣어 주세요.</p>
+  <div class="preset" id="presetList"></div>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">추가</button></div>
+</form></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc } = U;
+const CATS = ["업무 시스템", "교육청·기관", "수업·자료", "생활·기타"];
+const PRESETS = [
+  ["나이스 (대국민서비스)", "https://www.neis.go.kr", "업무 시스템", "학생·학부모용 나이스"],
+  ["교육부", "https://www.moe.go.kr", "교육청·기관", ""],
+  ["충청남도교육청", "https://www.cne.go.kr", "교육청·기관", ""],
+  ["학교알리미", "https://www.schoolinfo.go.kr", "교육청·기관", "학교 정보 공시"],
+  ["국가법령정보센터", "https://www.law.go.kr", "교육청·기관", "법령·규칙 찾기"],
+  ["국가교육과정정보센터", "https://ncic.re.kr", "수업·자료", "교육과정 원문"],
+  ["한국교육과정평가원", "https://www.kice.re.kr", "수업·자료", ""],
+  ["에듀넷·티-클리어", "https://www.edunet.net", "수업·자료", "수업 자료"],
+  ["EBS", "https://www.ebs.co.kr", "수업·자료", ""],
+  ["인디스쿨", "https://indischool.com", "수업·자료", "교사 커뮤니티"],
+];
+let links = [], cat = "전체", editing = null, editMode = false;
+let favs = new Set(); try { favs = new Set(JSON.parse(localStorage.getItem("gyomusil:fav-links") || "[]")); } catch {}
+const saveFavs = () => { try { localStorage.setItem("gyomusil:fav-links", JSON.stringify([...favs])); } catch {} };
+const PALETTE = ["#2f6fed", "#10b981", "#8b5cf6", "#f97316", "#ef4444", "#0ea5e9", "#ec4899", "#eab308", "#14b8a6", "#6366f1"];
+const colorOf = (s) => PALETTE[[...s].reduce((n, c) => n + c.charCodeAt(0), 0) % PALETTE.length];
+const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+
+App.init({ onMe: render });
+$("cats").innerHTML = ["전체", ...CATS].map((c) => `<button type="button" data-c="${c}">${c}</button>`).join("");
+$("eCat").innerHTML = CATS.map((c) => `<option>${c}</option>`).join("");
+
+async function load() {
+  try { links = await Store.list("links"); } catch (e) { $("board").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  render();
+}
+const visible = () => links.filter((l) => l.scope !== "개인" || (App.me && l.owner === App.me.name));
+function tile(l, i) {
+  return `<a class="card lift tile rise" style="--c:${colorOf(l.title)};animation-delay:${Math.min(i, 12) * 25}ms" href="${esc(l.url)}" target="_blank" rel="noopener" data-id="${l.id}">
+    <span class="ic">${esc([...l.title][0] || "?")}</span><b>${esc(l.title)}</b><small>${l.scope === "개인" ? '<span class="mine-tag">개인 · </span>' : ""}${esc(l.description || host(l.url))}</small>
+    <button class="fav ${favs.has(l.id) ? "on" : ""}" data-fav="${l.id}" type="button" aria-label="즐겨찾기">⭐</button>
+    <button class="edit" data-edit="${l.id}" type="button">수정</button></a>`;
+}
+function filtered() {
+  const q = $("q").value.trim().toLowerCase();
+  return visible().filter((l) => cat === "전체" || l.category === cat)
+    .filter((l) => !q || [l.title, l.description, l.url].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => (b.clicks || 0) - (a.clicks || 0) || a.title.localeCompare(b.title, "ko"));
+}
+function render() {
+  [...$("cats").children].forEach((b) => b.classList.toggle("on", b.dataset.c === cat));
+  $("board").classList.toggle("editing", editMode);
+  $("editToggle").textContent = editMode ? "✅ 편집 끝" : "✏️ 편집";
+  const rows = filtered(), q = $("q").value.trim();
+  if (!visible().length) { $("board").innerHTML = App.empty("아직 링크가 없어요", "[✨ 추천 링크 넣기]로 시작하거나 직접 추가해 보세요.", "🔗"); return; }
+  let html = "";
+  const fav = rows.filter((l) => favs.has(l.id));
+  if (fav.length && !q) html += `<div class="sec">⭐ 내 즐겨찾기</div><div class="tiles">${fav.map(tile).join("")}</div>`;
+  if (q || cat !== "전체") html += `<div class="sec">${q ? `🔎 "${esc(q)}" 검색 결과` : esc(cat)}</div><div class="tiles">${rows.map(tile).join("")}</div>`;
+  else for (const c of CATS) { const l = rows.filter((x) => x.category === c); if (l.length) html += `<div class="sec">${esc(c)}</div><div class="tiles">${l.map(tile).join("")}</div>`; }
+  $("board").innerHTML = html || App.empty("찾는 링크가 없어요", "", "🔎");
+}
+$("cats").onclick = (e) => { const b = e.target.closest("button"); if (b) { cat = b.dataset.c; render(); } };
+$("q").oninput = render;
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { const l = filtered()[0]; if (l) { bump(l); window.open(l.url, "_blank", "noopener"); } } });
+$("editToggle").onclick = () => { editMode = !editMode; render(); };
+function bump(l) { Store.update("links", l.id, { clicks: (l.clicks || 0) + 1 }).catch(() => {}); }
+$("board").onclick = (e) => {
+  const f = e.target.closest("[data-fav]");
+  if (f) { e.preventDefault(); favs.has(f.dataset.fav) ? favs.delete(f.dataset.fav) : favs.add(f.dataset.fav); saveFavs(); return render(); }
+  const ed = e.target.closest("[data-edit]");
+  if (ed) { e.preventDefault(); return openEdit(links.find((l) => l.id === ed.dataset.edit)); }
+  const t = e.target.closest(".tile");
+  if (t) { if (editMode) { e.preventDefault(); return openEdit(links.find((l) => l.id === t.dataset.id)); } bump(links.find((l) => l.id === t.dataset.id)); }
+};
+
+/* 추가·수정 */
+function openEdit(l) {
+  if (!App.need()) return;
+  editing = l || null;
+  $("editForm").reset();
+  $("eHead").textContent = l ? "링크 수정" : "링크 추가";
+  if (l) { $("eUrl").value = l.url; $("eTitle").value = l.title; $("eCat").value = l.category; $("eScope").value = l.scope || "공용"; $("eDesc").value = l.description || ""; }
+  else if (cat !== "전체") $("eCat").value = cat;
+  $("eDel").classList.toggle("hidden", !l);
+  $("editDialog").showModal();
+}
+$("addBtn").onclick = () => openEdit();
+let autoT = "";
+$("eUrl").addEventListener("change", () => { if (!$("eTitle").value) $("eTitle").value = autoT = host($("eUrl").value); });
+$("eTitle").addEventListener("focus", () => { if ($("eTitle").value && $("eTitle").value === autoT) setTimeout(() => $("eTitle").select(), 0); });
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const scope = $("eScope").value;
+  const row = { url: $("eUrl").value.trim(), title: $("eTitle").value.trim(), category: $("eCat").value, scope, owner: scope === "개인" ? App.me.name : null, description: $("eDesc").value.trim() || null };
+  if (editing) await Store.update("links", editing.id, row); else await Store.insert("links", { ...row, clicks: 0, author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => { if (!(await App.confirm(`"${editing.title}" 링크를 삭제할까요?`, "삭제"))) return; $("editDialog").close(); await Store.remove("links", editing.id); load(); };
+
+$("presetBtn").onclick = () => {
+  if (!App.need()) return;
+  const have = new Set(links.map((l) => host(l.url)));
+  $("presetList").innerHTML = PRESETS.map(([t, u, c, d], i) => `<label><input type="checkbox" value="${i}" ${have.has(host(u)) ? "disabled" : "checked"}>${esc(t)}<small>${have.has(host(u)) ? "이미 있음" : esc(host(u))}</small></label>`).join("");
+  $("presetDialog").showModal();
+};
+$("presetForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  for (const x of $("presetList").querySelectorAll("input:checked:not(:disabled)")) {
+    const [title, url, category, description] = PRESETS[+x.value];
+    await Store.insert("links", { title, url, category, description: description || null, scope: "공용", owner: null, clicks: 0, author: App.me.name });
+  }
+  App.toast("추천 링크를 넣었어요"); load();
+});
+
+Store.subscribe("links", load);
+render(); load();
+</script>
+</body>
+</html>
