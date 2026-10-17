@@ -3,5 +3,5 @@
 // Supabase 가입 후 Project URL과 anon(공개) 키를 여기에 넣으면 모든 선생님이 같은 데이터를 함께 봐요.
 window.GYOMUSIL_CONFIG = {
   supabaseUrl: "https://umkwazmdgpzmhxtaoxal.supabase.co",
-  supabaseAnonKey: "",
+  supabaseAnonKey: "sb_publishable_YzswGKv-utLozfJrxERzjw_k6lPh_LE",
 };
