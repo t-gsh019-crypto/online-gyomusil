@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학생·학부모 소통</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #16a34a; --accent-2: #0d9488; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .filters select { width: auto; }
+  .filters input { flex: 1; min-width: 150px; }
+  .list { display: grid; gap: 12px; margin-top: 12px; }
+  .nt { cursor: pointer; padding: 16px 18px; }
+  .nt-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+  .nt h3 { margin: 8px 0 4px; font-size: 17px; letter-spacing: -0.02em; }
+  .nt .body { font-size: 14px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+  .prog { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 700; }
+  .bar { flex: 1; height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+  .dl { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .dl.late { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .day { margin-top: 18px; }
+  .day h3 { margin: 0 0 8px 2px; font-size: 15px; }
+  .day h3 .muted { font-size: 12px; font-weight: 600; }
+  .memo { padding: 14px 16px; }
+  .memo ul { margin: 6px 0 0; padding-left: 18px; }
+  .memo li { margin: 3px 0; }
+  .memo .nt-top { justify-content: space-between; }
+  .counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .count { flex: 1; min-width: 90px; padding: 12px; border-radius: 16px; background: var(--surface-2); text-align: center; }
+  .count b { display: block; font-size: 22px; }
+  .count span { font-size: 12px; color: var(--text-2); }
+  .count.miss b { color: var(--danger); }
+  .rtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rtable th, .rtable td { border-bottom: 1px solid var(--border); padding: 8px 6px; text-align: left; white-space: nowrap; }
+  .rtable th { color: var(--text-2); font-size: 12px; }
+  .missing { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .missing span { min-width: 30px; text-align: center; padding: 3px 6px; border-radius: 8px; font-size: 12px; font-weight: 700; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .share { display: flex; gap: 6px; padding: 10px; border-radius: 14px; background: var(--accent-soft); margin: 10px 0; align-items: center; }
+  .share input { flex: 1; font-size: 13px; background: var(--surface-solid); }
+  .opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); margin-top: 6px; cursor: pointer; border: 1.5px solid transparent; font-weight: 600; }
+  .opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .opt input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .letter { white-space: pre-wrap; line-height: 1.75; font-size: 15px; }
+  .file { display: inline-flex; gap: 6px; align-items: center; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); text-decoration: none; color: var(--text); font-weight: 600; font-size: 14px; margin-top: 8px; }
+  /* 학부모용 회신 화면 */
+  .parent .topbar .me-chip, .parent .topbar .home-link { display: none; }
+  .pcard { max-width: 640px; margin: 20px auto; padding: 22px; }
+  .done { text-align: center; padding: 30px 10px; }
+  .done .big { font-size: 64px; line-height: 1; }
+  @media (min-width: 561px) { #editDialog, #viewDialog { width: min(760px, calc(100vw - 24px)); } }
+  @media print {
+    body > *:not(#viewDialog) { display: none !important; }
+    #viewDialog { position: static; box-shadow: none; border: 0; width: 100%; max-height: none; }
+    #viewDialog .actions, #viewDialog .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="family"></span><h1>학생·학부모 소통</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap" id="teacher">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼서, 회신 링크도 이 기기에서만 열려요.</div>
+  <section class="hero">
+    <span class="eyebrow">💌 HOME &amp; SCHOOL</span>
+    <h2>가정통신문 회신을 <span class="grad">종이 없이</span></h2>
+    <p>링크 하나로 보호자 동의를 받고, 미회신 학생 번호를 바로 확인해요. 알림장도 반별로 쌓아 둬요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sOpen">0</b><span>회신 받는 중</span></div>
+      <div class="stat"><b id="sReplies">0</b><span>받은 회신</span></div>
+      <div class="stat"><b id="sMemo">0</b><span>이번 주 알림장</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="가정통신문" class="on">💌 가정통신문</button>
+    <button type="button" data-t="알림장">📒 알림장</button>
+  </nav>
+  <div class="filters">
+    <select id="target" aria-label="대상"></select>
+    <input id="q" type="search" placeholder="제목·내용 검색" aria-label="검색">
+  </div>
+  <section id="list"></section>
+</main>
+<main class="wrap hidden" id="parent"></main>
+<button class="btn fab hidden" id="newBtn" type="button">＋ 가정통신문</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">가정통신문 쓰기</h2>
+  <div class="three">
+    <div><label for="eGrade">학년</label><select id="eGrade"><option>전체</option><option>1학년</option><option>2학년</option><option>3학년</option></select></div>
+    <div><label for="eClass">반</label><select id="eClass"></select></div>
+    <div id="eDateBox"><label for="eDate">날짜</label><input id="eDate" type="date"></div>
+  </div>
+  <label for="eTitle">제목</label><input id="eTitle" required maxlength="80">
+  <label for="eBody" id="eBodyLabel">내용</label><textarea id="eBody" style="min-height:160px" required></textarea>
+  <div id="replyBox">
+    <label class="opt" style="margin-top:12px"><input type="checkbox" id="eNeed"> 보호자 회신 받기 (동의서·참가 신청 등)</label>
+    <div id="replyOpts" class="hidden">
+      <label for="eChoices">회신 보기 (쉼표로 구분)</label><input id="eChoices" value="동의합니다, 동의하지 않습니다">
+      <div class="two">
+        <div><label for="eDeadline">회신 마감일</label><input id="eDeadline" type="date"></div>
+        <div><label for="eSize">학생 수 (미회신 확인용)</label><input id="eSize" type="number" min="0" max="400" placeholder="예: 28"></div>
+      </div>
+    </div>
+    <label>첨부 파일</label>
+    <div class="row"><label class="btn small ghost" style="margin:0">📎 파일 올리기<input type="file" id="eFile" hidden></label><span class="muted" id="eFileName" style="font-size:13px"></span></div>
+  </div>
+  <p class="hint" id="eMsg" style="font-size:13px;color:var(--danger)"></p>
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="viewDialog">
+  <div id="vBody"></div>
+  <div class="actions"><button class="btn ghost" id="vCsv" type="button">⬇️ 회신 CSV</button><button class="btn ghost" id="vPrint" type="button">🖨 인쇄</button><button class="btn ghost" id="vEdit" type="button">✏️ 수정</button><button class="btn" id="vClose" type="button">닫기</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, ymd, parse, addDays, DOW, md, fmt, dday } = U;
+const pid = new URLSearchParams(location.search).get("id");
+const parseJ = (x) => { if (typeof x.choices === "string") x.choices = JSON.parse(x.choices); return x; };
+const targetOf = (x) => x.grade === "전체" ? "전체" : `${x.grade}${x.class_no ? ` ${x.class_no}반` : " 전체"}`;
+const linkOf = (id) => `${location.origin}${location.pathname}?id=${id}`;
+
+
+/* ───────── 학부모 회신 화면 (?id=) ───────── */
+async function parentMode() {
+  document.body.classList.add("parent");
+  $("teacher").classList.add("hidden"); $("parent").classList.remove("hidden");
+  document.querySelectorAll("[data-app-icon]").forEach((el) => (el.outerHTML = appIcon("family").replace("<svg", '<svg class="app-icon"')));
+  document.querySelector(".topbar h1").textContent = SCHOOL.name ? `${SCHOOL.name} 가정통신문` : "가정통신문";
+  let n;
+  try { n = (await Store.list("family_notices")).find((x) => x.id === pid); } catch {}
+  if (!n) { $("parent").innerHTML = `<div class="card pcard">${App.empty("통신문을 찾을 수 없어요", "링크가 정확한지 담임 선생님께 확인해 주세요.", "🔍")}</div>`; return; }
+  parseJ(n);
+  const closed = n.deadline && n.deadline < ymd(new Date());
+  $("parent").innerHTML = `<article class="card pcard rise">
+    <div class="nt-top"><span class="chip accent">${esc(targetOf(n))}</span><span>${fmt(n.created_at)} · ${esc(n.author)} 선생님</span></div>
+    <h2 style="margin:10px 0 12px">${esc(n.title)}</h2>
+    <div class="letter">${esc(n.body)}</div>
+    ${n.file_url ? `<a class="file" href="${esc(n.file_url)}" download="${esc(n.file_name)}">📎 ${esc(n.file_name)}</a>` : ""}
+    ${n.need_reply ? `<hr style="border:0;border-top:1px dashed var(--border);margin:20px 0">
+      ${closed ? `<p class="muted">회신 마감일(${md(n.deadline)})이 지났어요. 담임 선생님께 직접 연락해 주세요.</p>` : `
+      <form id="rForm"><h3 style="margin:0 0 4px">✍️ 회신서</h3>${n.deadline ? `<p class="muted" style="margin:0 0 8px">${md(n.deadline)}까지 보내 주세요 (${dday(n.deadline)})</p>` : ""}
+        <div class="two"><div><label for="rNo">학생 번호</label><input id="rNo" type="number" min="1" max="400" required placeholder="예: 7"></div>
+        <div><label for="rName">학생 이름</label><input id="rName" required maxlength="20"></div></div>
+        <label>회신</label>${n.choices.map((c, i) => `<label class="opt"><input type="radio" name="rc" value="${esc(c)}" ${i === 0 ? "required" : ""}> ${esc(c)}</label>`).join("")}
+        <div class="two"><div><label for="rSigner">보호자 성함</label><input id="rSigner" required maxlength="20"></div>
+        <div><label for="rRel">관계</label><select id="rRel"><option>어머니</option><option>아버지</option><option>조부모</option><option>기타 보호자</option></select></div></div>
+        <label for="rMemo">선생님께 한마디 (선택)</label><textarea id="rMemo" style="min-height:60px" maxlength="300"></textarea>
+        <p class="muted" style="font-size:12px">보내 주신 정보는 이 회신 확인에만 쓰여요. 같은 번호로 다시 보내면 마지막 회신으로 바뀌어요.</p>
+        <div class="actions"><button class="btn" type="submit">회신 보내기</button></div></form>`}` : ""}
+  </article>`;
+  $("rForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true; btn.textContent = "보내는 중…";
+    const row = { notice_id: n.id, student_no: +$("rNo").value, student_name: $("rName").value.trim(), choice: document.querySelector("[name=rc]:checked").value,
+      signer: $("rSigner").value.trim(), relation: $("rRel").value, memo: $("rMemo").value.trim() };
+    try {
+      await Store.insert("family_replies", row);
+      $("rForm").outerHTML = `<div class="done rise"><div class="big">💚</div><h3>회신이 전달됐어요</h3><p class="muted">${esc(row.student_no)}번 ${esc(row.student_name)} · ${esc(row.choice)}<br>${esc(row.signer)}(${esc(row.relation)}) 님, 감사합니다.</p></div>`;
+    } catch (err) { btn.disabled = false; btn.textContent = "회신 보내기"; App.toast("보내지 못했어요. 잠시 후 다시 시도해 주세요."); }
+  });
+}
+
+/* ───────── 교사 화면 ───────── */
+let items = [], replies = [], tab = "가정통신문", editing = null, viewing = null, file = null;
+function teacherMode() {
+  App.init({ onMe: render });
+  $("newBtn").classList.remove("hidden");
+  $("eClass").innerHTML = `<option value="">전체</option>` + Array.from({ length: 15 }, (_, i) => `<option value="${i + 1}">${i + 1}반</option>`).join("");
+  const opts = ["전체 대상", "1학년", "2학년", "3학년"];
+  $("target").innerHTML = opts.map((o) => `<option value="${o === "전체 대상" ? "" : o}">${o}</option>`).join("");
+  try { $("target").value = localStorage.getItem("gyomusil:family-target") || ""; } catch {}
+  Store.subscribe("family_notices", load);
+  Store.subscribe("family_replies", load);
+  render(); load();
+}
+async function load() {
+  try { [items, replies] = await Promise.all([Store.list("family_notices"), Store.list("family_replies")]); }
+  catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  items.forEach(parseJ);
+  render();
+  if (viewing) paintView(viewing);
+}
+// 같은 번호가 여러 번 보내면 마지막 회신만 셈
+function latest(id) {
+  const m = new Map();
+  replies.filter((r) => r.notice_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)).forEach((r) => m.set(r.student_no, r));
+  return [...m.values()].sort((a, b) => a.student_no - b.student_no);
+}
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  $("newBtn").textContent = tab === "알림장" ? "＋ 알림장" : "＋ 가정통신문";
+  const today = ymd(new Date()), weekAgo = ymd(addDays(new Date(), -6));
+  $("sOpen").textContent = items.filter((x) => x.kind === "가정통신문" && x.need_reply && (!x.deadline || x.deadline >= today)).length;
+  $("sReplies").textContent = items.reduce((n, x) => n + latest(x.id).length, 0);
+  $("sMemo").textContent = items.filter((x) => x.kind === "알림장" && x.date >= weekAgo).length;
+  const g = $("target").value, q = $("q").value.trim();
+  const rows = items.filter((x) => x.kind === tab && (!g || x.grade === g || x.grade === "전체") && (!q || (x.title + x.body).includes(q)));
+  if (tab === "가정통신문") {
+    rows.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    $("list").innerHTML = `<div class="list">${rows.map((x, i) => {
+      const got = latest(x.id).length, late = x.deadline && x.deadline < today;
+      return `<article class="card lift nt rise" style="animation-delay:${Math.min(i, 10) * 30}ms" data-id="${x.id}">
+        <div class="nt-top"><span class="chip accent">${esc(targetOf(x))}</span>${x.need_reply ? `<span class="dl ${late ? "late" : ""}">${x.deadline ? (late ? "마감" : `${md(x.deadline)} 마감 · ${dday(x.deadline)}`) : "회신 받는 중"}</span>` : `<span class="chip">안내만</span>`}<span>${fmt(x.created_at)} · ${esc(x.author)}</span></div>
+        <h3>${esc(x.title)}</h3><div class="body">${esc(x.body)}</div>
+        ${x.need_reply ? `<div class="prog"><div class="bar"><span style="width:${x.roster_size ? Math.min(100, (got / x.roster_size) * 100) : got ? 100 : 0}%"></span></div>${got}${x.roster_size ? ` / ${x.roster_size}명` : "명 회신"}</div>` : ""}
+      </article>`;
+    }).join("")}</div>`;
+    if (!rows.length) $("list").innerHTML = App.empty("아직 가정통신문이 없어요", "오른쪽 아래 버튼으로 첫 통신문을 써 보세요.", "💌");
+  } else {
+    const days = {};
+    rows.forEach((x) => (days[x.date] = days[x.date] || []).push(x));
+    $("list").innerHTML = Object.keys(days).sort().reverse().map((d) => `<div class="day"><h3>${md(d)} <span class="muted">${d === today ? "오늘" : ""}</span></h3><div class="list" style="margin-top:0">
+      ${days[d].map((x) => `<article class="card lift memo rise" data-id="${x.id}"><div class="nt-top"><span class="chip accent">${esc(targetOf(x))}</span><span>${esc(x.author)}</span></div>
+        <h3 style="margin:8px 0 2px;font-size:16px">${esc(x.title)}</h3><ul>${x.body.split("\n").filter((l) => l.trim()).map((l) => `<li>${esc(l.replace(/^[-•·]\s*/, ""))}</li>`).join("")}</ul></article>`).join("")}
+    </div></div>`).join("") || App.empty("아직 알림장이 없어요", "준비물·숙제·안내를 한 줄씩 적어 보세요.", "📒");
+  }
+}
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.t; render(); } };
+$("target").onchange = () => { try { localStorage.setItem("gyomusil:family-target", $("target").value); } catch {} render(); };
+$("q").oninput = render;
+$("list").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-id]"); if (!c) return;
+  const x = items.find((i) => i.id === c.dataset.id);
+  x.kind === "알림장" ? openEdit(x) : openView(x.id);
+});
+
+/* 쓰기 */
+$("eNeed").onchange = () => $("replyOpts").classList.toggle("hidden", !$("eNeed").checked);
+$("eGrade").onchange = () => { $("eClass").disabled = $("eGrade").value === "전체"; if ($("eClass").disabled) $("eClass").value = ""; };
+$("eFile").onchange = async () => {
+  const f = $("eFile").files[0]; if (!f) return;
+  $("eMsg").textContent = ""; $("eFileName").textContent = "올리는 중…";
+  try { file = { url: await Store.upload(f, "family"), name: f.name }; $("eFileName").textContent = f.name; }
+  catch (err) { $("eFileName").textContent = ""; $("eMsg").textContent = err.message; }
+  $("eFile").value = "";
+};
+function openEdit(x) {
+  if (!App.need()) return;
+  editing = x || null;
+  const memo = (x?.kind || tab) === "알림장";
+  $("editForm").reset(); $("eMsg").textContent = "";
+  $("eHead").textContent = (x ? "수정 · " : "") + (memo ? "알림장" : "가정통신문 쓰기");
+  $("eDateBox").classList.toggle("hidden", !memo); $("eDate").required = memo;
+  $("replyBox").classList.toggle("hidden", memo);
+  $("eBodyLabel").textContent = memo ? "내용 (한 줄에 하나씩)" : "내용";
+  $("eBody").placeholder = memo ? "예:\n준비물 - 색연필, 자\n수학 익힘책 34~35쪽\n금요일 현장체험학습 동의서 제출" : "보호자님께 드리는 안내를 적어 주세요.";
+  const myGrade = App.me.group.match(/^\d학년/)?.[0];
+  $("eGrade").value = x?.grade || $("target").value || myGrade || "전체";
+  $("eClass").value = x?.class_no || ""; $("eGrade").onchange(); $("eClass").value = x?.class_no || "";
+  $("eDate").value = x?.date || ymd(new Date());
+  $("eTitle").value = x?.title || (memo ? `${md(ymd(new Date()))} 알림장` : "");
+  $("eBody").value = x?.body || "";
+  $("eNeed").checked = !!x?.need_reply; $("eNeed").onchange();
+  if (x?.choices) $("eChoices").value = x.choices.join(", ");
+  $("eDeadline").value = x?.deadline || ""; $("eSize").value = x?.roster_size || "";
+  file = x?.file_url ? { url: x.file_url, name: x.file_name } : null;
+  $("eFileName").textContent = file ? file.name : "";
+  $("eDel").classList.toggle("hidden", !(editing && editing.author === App.me.name));
+  $("editDialog").showModal();
+}
+$("newBtn").onclick = () => openEdit();
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const memo = (editing?.kind || tab) === "알림장";
+  const choices = $("eChoices").value.split(",").map((s) => s.trim()).filter(Boolean);
+  const row = { kind: memo ? "알림장" : "가정통신문", grade: $("eGrade").value, class_no: $("eClass").value ? +$("eClass").value : null,
+    title: $("eTitle").value.trim(), body: $("eBody").value.trim(), date: memo ? $("eDate").value : ymd(new Date()),
+    need_reply: !memo && $("eNeed").checked, choices: choices.length >= 1 ? choices : ["확인했습니다"], deadline: (!memo && $("eDeadline").value) || null,
+    roster_size: (!memo && +$("eSize").value) || null, file_url: memo ? null : file?.url || null, file_name: memo ? null : file?.name || null };
+  if (editing) await Store.update("family_notices", editing.id, { ...row, date: editing.date && !memo ? editing.date : row.date });
+  else await Store.insert("family_notices", { ...row, author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => {
+  if (!(await App.confirm("삭제하면 받은 회신도 함께 보이지 않아요. 삭제할까요?", "삭제"))) return;
+  $("editDialog").close(); $("viewDialog").close();
+  await Store.remove("family_notices", editing.id);
+  for (const r of replies.filter((r) => r.notice_id === editing.id)) await Store.remove("family_replies", r.id);
+  load();
+};
+
+/* 보기·회신 현황 */
+function openView(id) { viewing = id; paintView(id); $("viewDialog").showModal(); }
+function paintView(id) {
+  const x = items.find((i) => i.id === id); if (!x) return;
+  const rs = latest(x.id), counts = {};
+  x.choices.forEach((c) => (counts[c] = 0));
+  rs.forEach((r) => (counts[r.choice] = (counts[r.choice] || 0) + 1));
+  const got = new Set(rs.map((r) => r.student_no));
+  const missing = x.roster_size ? Array.from({ length: x.roster_size }, (_, i) => i + 1).filter((n) => !got.has(n)) : [];
+  $("vCsv").classList.toggle("hidden", !x.need_reply);
+  $("vBody").innerHTML = `<div class="nt-top"><span class="chip accent">${esc(targetOf(x))}</span><span>${fmt(x.created_at)} · ${esc(x.author)}</span></div>
+    <h2 style="margin:10px 0 10px">${esc(x.title)}</h2>
+    <div class="letter">${esc(x.body)}</div>
+    ${x.file_url ? `<a class="file" href="${esc(x.file_url)}" download="${esc(x.file_name)}">📎 ${esc(x.file_name)}</a>` : ""}
+    ${x.need_reply ? `<div class="no-print"><div class="share"><input id="vLink" readonly value="${esc(linkOf(x.id))}" aria-label="회신 링크"><button class="btn small" id="vCopyLink" type="button">링크 복사</button></div>
+      <p class="muted" style="font-size:12px;margin:0">이 링크를 학급 알림 앱이나 문자로 보내면, 보호자가 로그인 없이 회신할 수 있어요.${x.deadline ? ` 마감 ${md(x.deadline)} (${dday(x.deadline)})` : ""}</p></div>
+      <div class="counts">${Object.entries(counts).map(([c, n]) => `<div class="count"><b>${n}</b><span>${esc(c)}</span></div>`).join("")}${x.roster_size ? `<div class="count miss"><b>${missing.length}</b><span>미회신</span></div>` : ""}</div>
+      ${missing.length ? `<b style="font-size:13px">미회신 번호</b><div class="missing">${missing.map((n) => `<span>${n}</span>`).join("")}</div>` : ""}
+      ${rs.length ? `<div style="overflow-x:auto;margin-top:12px"><table class="rtable"><thead><tr><th>번호</th><th>이름</th><th>회신</th><th>보호자</th><th>메모</th><th>시각</th></tr></thead><tbody>
+        ${rs.map((r) => `<tr><td>${r.student_no}</td><td>${esc(r.student_name)}</td><td><b>${esc(r.choice)}</b></td><td>${esc(r.signer)}(${esc(r.relation)})</td><td>${esc(r.memo || "")}</td><td>${fmt(r.created_at)}</td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="muted">아직 받은 회신이 없어요.</p>`}` : ""}`;
+  $("vCopyLink")?.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(linkOf(x.id)); } catch { $("vLink").select(); document.execCommand("copy"); }
+    App.toast("회신 링크를 복사했어요");
+  });
+}
+$("vCsv").onclick = () => {
+  const x = items.find((i) => i.id === viewing);
+  App.download(`${x.title}_회신.csv`, App.csv([["번호", "이름", "회신", "보호자", "관계", "메모", "시각"], ...latest(x.id).map((r) => [r.student_no, r.student_name, r.choice, r.signer, r.relation, r.memo, fmt(r.created_at)])]));
+};
+$("vEdit").onclick = () => openEdit(items.find((i) => i.id === viewing));
+$("vPrint").onclick = () => window.print();
+$("vClose").onclick = () => $("viewDialog").close();
+$("viewDialog").addEventListener("close", () => { viewing = null; });
+
+if (pid) parentMode(); else teacherMode();
+</script>
+</body>
+</html>
