@@ -56,6 +56,25 @@
       writeLocal(table, readLocal(table).filter((r) => r.id !== id));
     },
 
+    // 파일 올리기 — Supabase Storage의 gyomusil 보관함에 저장하고 주소를 돌려줌
+    // 체험 모드에서는 2MB 이하 파일만 이 브라우저에 저장
+    async upload(file, folder = "files") {
+      if (sb) {
+        const ext = (file.name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "").slice(0, 8);
+        const path = `${folder}/${uid()}.${ext}`;
+        const { error } = await sb.storage.from("gyomusil").upload(path, file, { contentType: file.type || undefined });
+        if (error) throw error;
+        return sb.storage.from("gyomusil").getPublicUrl(path).data.publicUrl;
+      }
+      if (file.size > 2 * 1024 * 1024) throw new Error("체험 모드에서는 2MB 이하 파일만 올릴 수 있어요.");
+      return await new Promise((ok, no) => {
+        const r = new FileReader();
+        r.onload = () => ok(r.result);
+        r.onerror = () => no(r.error);
+        r.readAsDataURL(file);
+      });
+    },
+
     // 다른 선생님이 바꾼 내용이 새로고침 없이 반영되도록 알려줌
     subscribe(table, onChange) {
       if (sb) {
