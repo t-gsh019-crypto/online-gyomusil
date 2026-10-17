@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업무 체크리스트</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #6366f1; --accent-2: #3b82f6; }
+  .list { display: grid; gap: 10px; }
+  .group-title { font-size: 13px; font-weight: 800; color: var(--text-2); margin: 16px 2px 8px; letter-spacing: .02em; }
+  .task { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; cursor: pointer; padding: 14px 16px; }
+  .tick { width: 28px; height: 28px; border-radius: 9px; border: 2px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: transparent; cursor: pointer; display: grid; place-items: center; transition: .2s var(--ease); margin-top: 1px; }
+  .tick:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .tick.on { background: var(--grad); border-color: transparent; }
+  .tick svg { width: 16px; height: 16px; opacity: 0; }
+  .tick.on svg { opacity: 1; animation: pop .3s var(--ease); }
+  .task h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .task.done h3 { text-decoration: line-through; color: var(--text-2); }
+  .task .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--text-2); }
+  .dd { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .dd.soon { background: color-mix(in srgb, #f5a524 20%, transparent); color: #b45309; }
+  .dd.over { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .dd.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .imp { font-size: 11px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ef4444, #f97316); padding: 2px 8px; border-radius: 999px; }
+  .prog { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+  .bar { flex: 1; height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--grad); border-radius: 99px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .who { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .box { padding: 14px; border-radius: 16px; background: var(--surface-2); margin-top: 12px; }
+  .box h4 { margin: 0 0 4px; font-size: 14px; }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow: auto; padding: 4px 0; }
+  .pick label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 13px; cursor: pointer; }
+  .pick label:has(input:checked) { background: var(--accent); color: #fff; }
+  .pick input { display: none; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="tasks"></span><h1>업무 체크리스트</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">✅ TO-DO</span>
+    <h2>마감 놓치지 않는 <span class="grad">업무 관리</span></h2>
+    <p>제출 업무를 담당자에게 나눠 주고, 누가 끝냈는지 한눈에 봐요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sTodo">0</b><span>내 할 일</span></div>
+      <div class="stat"><b id="sSoon">0</b><span>3일 안 마감</span></div>
+      <div class="stat"><b id="sOver">0</b><span>마감 지남</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="todo" class="on">📌 내 할 일</button>
+    <button type="button" data-t="done">✔️ 끝낸 일</button>
+    <button type="button" data-t="sent">📤 내가 낸 업무</button>
+    <button type="button" data-t="all">🗂 전체 업무</button>
+  </nav>
+  <section id="list"></section>
+</main>
+<button class="btn fab" id="newBtn" type="button">＋ 업무 등록</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">업무 등록</h2>
+  <label for="eTitle">업무 이름</label><input id="eTitle" required maxlength="80" placeholder="예: 2학기 평가계획서 제출">
+  <div class="two">
+    <div><label for="eDue">마감일</label><input id="eDue" type="date" required></div>
+    <div><label for="eDept">주관 부서</label><select id="eDept"></select></div>
+  </div>
+  <label for="eWho">담당</label>
+  <select id="eWho"><option value="전체">전체 선생님</option><option value="부서">특정 부서</option><option value="개인">선생님 직접 고르기</option><option value="나">나만 (개인 할 일)</option></select>
+  <div id="eGroupBox" class="hidden"><label for="eGroup">부서</label><select id="eGroup"></select></div>
+  <div id="ePickBox" class="hidden"><label>선생님 고르기</label><div class="pick" id="ePick"></div></div>
+  <label for="eDesc">안내 (선택)</label><textarea id="eDesc" style="min-height:70px" placeholder="제출 방법, 양식 위치 등"></textarea>
+  <label for="eLink">관련 링크 (선택)</label><input id="eLink" type="url" placeholder="https://">
+  <label class="check"><input type="checkbox" id="eImp"> 🔥 중요 업무로 표시</label>
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="viewDialog">
+  <h2 id="vTitle"></h2>
+  <div class="row" id="vMeta"></div>
+  <p id="vDesc" style="white-space:pre-wrap"></p>
+  <div id="vLink"></div>
+  <div class="prog"><span id="vCount"></span><div class="bar"><i id="vBar"></i></div></div>
+  <div class="box"><h4>⏳ 아직 안 한 선생님 <span id="vNoCnt"></span></h4><div class="who" id="vNo"></div>
+    <div class="row" style="margin-top:10px"><button class="btn small ghost" id="vCopy" type="button">📋 이름 복사</button></div></div>
+  <div class="box"><h4>✅ 끝낸 선생님</h4><div class="who" id="vYes"></div></div>
+  <div class="actions"><button class="btn ghost hidden" id="vEdit" type="button">수정</button><button class="btn ghost" id="vMine" type="button"></button><button class="btn" id="vClose" type="button">닫기</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, fmt, ymd, addDays, md, dday, parse } = U;
+let tasks = [], tab = "todo", editing = null, viewing = null;
+const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+
+App.init({ onMe: render });
+window.addEventListener("roster", () => { render(); if (viewing) paintView(viewing); });
+$("eDept").innerHTML = U.GROUPS.map((g) => `<option>${g}</option>`).join("");
+$("eGroup").innerHTML = U.GROUPS.map((g) => `<option>${g}</option>`).join("");
+
+const assigned = (t) => t.assign_type === "전체" ? App.names() : t.assign_type === "부서" ? App.names(t.assign_group) : (t.assignees || []);
+const isMine = (t) => App.me && assigned(t).includes(App.me.name);
+const doneBy = (t, n) => !!(t.done || {})[n];
+const daysLeft = (t) => Math.round((parse(t.due) - parse(ymd(new Date()))) / 864e5);
+const ddClass = (t, done) => done ? "ok" : daysLeft(t) < 0 ? "over" : daysLeft(t) <= 3 ? "soon" : "";
+
+async function load() {
+  try { tasks = await Store.list("tasks"); } catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  tasks.forEach((t) => { if (typeof t.done === "string") t.done = JSON.parse(t.done); if (typeof t.assignees === "string") t.assignees = JSON.parse(t.assignees); });
+  render();
+  if (viewing) paintView(viewing);
+}
+
+function card(t, i) {
+  const me = App.me?.name, mineDone = me && doneBy(t, me), who = assigned(t), n = who.filter((x) => doneBy(t, x)).length;
+  const showTick = isMine(t);
+  return `<article class="card lift task rise ${showTick && mineDone ? "done" : ""}" style="animation-delay:${Math.min(i, 10) * 30}ms" data-id="${t.id}">
+    ${showTick ? `<button class="tick ${mineDone ? "on" : ""}" data-tick="${t.id}" type="button" aria-label="완료 표시">${CHECK}</button>` : `<span class="avatar">${esc(t.author.slice(-2))}</span>`}
+    <div><h3>${t.important ? '<span class="imp">🔥 중요</span>' : ""}${esc(t.title)}</h3>
+      <div class="meta"><span class="dd ${ddClass(t, showTick && mineDone)}">${showTick && mineDone ? "완료" : dday(t.due)}</span><span>~${md(t.due)}</span><span class="chip accent">${esc(t.dept)}</span><span>${t.assign_type === "부서" ? esc(t.assign_group) : t.assign_type === "개인" ? `${who.length}명` : t.assign_type === "나" ? "개인 할 일" : "전체"}</span></div>
+      ${t.assign_type !== "나" ? `<div class="prog"><span>${n}/${who.length}명 완료</span><div class="bar"><i style="width:${who.length ? (n / who.length) * 100 : 0}%"></i></div></div>` : ""}
+    </div></article>`;
+}
+
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  const me = App.me?.name;
+  const todo = tasks.filter((t) => isMine(t) && !doneBy(t, me));
+  $("sTodo").textContent = todo.length;
+  $("sSoon").textContent = todo.filter((t) => daysLeft(t) >= 0 && daysLeft(t) <= 3).length;
+  $("sOver").textContent = todo.filter((t) => daysLeft(t) < 0).length;
+  const byDue = (a, b) => a.due.localeCompare(b.due) || (b.important ? 1 : 0) - (a.important ? 1 : 0);
+  let html = "";
+  if (tab === "todo") {
+    const groups = [["⚠️ 마감 지남", todo.filter((t) => daysLeft(t) < 0)], ["🔥 이번 주 (7일 안)", todo.filter((t) => daysLeft(t) >= 0 && daysLeft(t) <= 7)], ["🗓 그 뒤", todo.filter((t) => daysLeft(t) > 7)]];
+    html = groups.filter(([, l]) => l.length).map(([g, l]) => `<div class="group-title">${g}</div><div class="list">${l.sort(byDue).map(card).join("")}</div>`).join("")
+      || App.empty("할 일을 모두 끝냈어요", "새 업무가 오면 여기에 나타나요.", "🎉");
+  } else {
+    const rows = tab === "done" ? tasks.filter((t) => isMine(t) && doneBy(t, me)).sort((a, b) => b.due.localeCompare(a.due))
+      : tab === "sent" ? tasks.filter((t) => me && t.author === me && t.assign_type !== "나").sort(byDue)
+      : tasks.filter((t) => t.assign_type !== "나").sort(byDue);
+    html = `<div class="list" style="margin-top:6px">${rows.map(card).join("")}</div>` || "";
+    if (!rows.length) html = App.empty(tab === "done" ? "아직 끝낸 일이 없어요" : "업무가 없어요", tab === "sent" ? "오른쪽 아래 버튼으로 업무를 나눠 줄 수 있어요." : "", tab === "done" ? "📝" : "🗂");
+  }
+  $("list").innerHTML = html;
+}
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.t; render(); } };
+$("list").onclick = async (e) => {
+  const tk = e.target.closest("[data-tick]");
+  if (tk) { e.stopPropagation(); return toggleMine(tasks.find((t) => t.id === tk.dataset.tick)); }
+  const c = e.target.closest(".task"); if (c) openView(c.dataset.id);
+};
+async function toggleMine(t) {
+  if (!App.need()) return;
+  const done = { ...(t.done || {}) };
+  if (done[App.me.name]) delete done[App.me.name]; else done[App.me.name] = new Date().toISOString();
+  t.done = done; render();
+  await Store.update("tasks", t.id, { done });
+  if (done[App.me.name]) App.toast("완료! 수고하셨어요 👏");
+  load();
+}
+
+/* 등록·수정 */
+function paintPick(sel = []) { $("ePick").innerHTML = App.roster.map((t) => `<label><input type="checkbox" value="${esc(t.name)}" ${sel.includes(t.name) ? "checked" : ""}>${esc(t.name)} <span style="opacity:.6;font-size:11px">${esc(t.group || "")}</span></label>`).join("") || '<span class="muted">명단이 비어 있어요</span>'; }
+function syncWho() { $("eGroupBox").classList.toggle("hidden", $("eWho").value !== "부서"); $("ePickBox").classList.toggle("hidden", $("eWho").value !== "개인"); }
+$("eWho").onchange = syncWho;
+function openEdit(t) {
+  if (!App.need()) return;
+  editing = t || null;
+  $("editForm").reset();
+  $("eHead").textContent = t ? "업무 수정" : "업무 등록";
+  $("eDue").value = t?.due || ymd(addDays(new Date(), 7));
+  $("eDept").value = t?.dept || App.me.group;
+  $("eWho").value = t?.assign_type || "전체";
+  $("eGroup").value = t?.assign_group || App.me.group;
+  if (t) { $("eTitle").value = t.title; $("eDesc").value = t.description || ""; $("eLink").value = t.link || ""; $("eImp").checked = !!t.important; }
+  paintPick(t?.assignees || []);
+  syncWho();
+  $("eDel").classList.toggle("hidden", !t);
+  $("editDialog").showModal();
+}
+$("newBtn").onclick = () => openEdit();
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const type = $("eWho").value;
+  const row = { title: $("eTitle").value.trim(), due: $("eDue").value, dept: $("eDept").value, assign_type: type,
+    assign_group: type === "부서" ? $("eGroup").value : null,
+    assignees: type === "개인" ? [...$("ePick").querySelectorAll("input:checked")].map((x) => x.value) : type === "나" ? [App.me.name] : [],
+    description: $("eDesc").value.trim() || null, link: $("eLink").value.trim() || null, important: $("eImp").checked };
+  if (editing) await Store.update("tasks", editing.id, row);
+  else await Store.insert("tasks", { ...row, done: {}, author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => {
+  if (!(await App.confirm("이 업무를 삭제할까요?", "삭제"))) return;
+  $("editDialog").close(); $("viewDialog").close(); await Store.remove("tasks", editing.id); load();
+};
+
+/* 자세히 */
+function openView(id) { viewing = id; paintView(id); $("viewDialog").showModal(); }
+function paintView(id) {
+  const t = tasks.find((x) => x.id === id); if (!t) return;
+  const who = assigned(t), yes = who.filter((n) => doneBy(t, n)), no = who.filter((n) => !doneBy(t, n));
+  $("vTitle").textContent = t.title;
+  $("vMeta").innerHTML = `<span class="dd ${ddClass(t)}">${dday(t.due)}</span><span class="muted">~${md(t.due)}</span><span class="chip accent">${esc(t.dept)}</span><span class="muted">${esc(t.author)} 등록</span>`;
+  $("vDesc").textContent = t.description || "";
+  $("vLink").innerHTML = t.link && /^https?:\/\//.test(t.link) ? `<a class="btn small ghost" href="${esc(t.link)}" target="_blank" rel="noopener">🔗 관련 링크 열기</a>` : "";
+  $("vCount").textContent = `${yes.length}/${who.length}명 완료`;
+  $("vBar").style.width = `${who.length ? (yes.length / who.length) * 100 : 0}%`;
+  $("vNoCnt").textContent = `${no.length}명`;
+  $("vNo").innerHTML = no.map((n) => `<span class="chip">${esc(n)}</span>`).join("") || '<span class="muted">모두 끝냈어요 🎉</span>';
+  $("vYes").innerHTML = yes.map((n) => `<span class="chip accent" title="${fmt(t.done[n])}">${esc(n)} · ${fmt(t.done[n])}</span>`).join("") || '<span class="muted">아직 없어요</span>';
+  $("vEdit").classList.toggle("hidden", !(App.me && t.author === App.me.name));
+  $("vMine").classList.toggle("hidden", !isMine(t));
+  $("vMine").textContent = App.me && doneBy(t, App.me.name) ? "↩️ 완료 취소" : "✅ 나 완료";
+}
+$("vClose").onclick = () => $("viewDialog").close();
+$("viewDialog").addEventListener("close", () => { viewing = null; });
+$("vEdit").onclick = () => openEdit(tasks.find((t) => t.id === viewing));
+$("vMine").onclick = () => toggleMine(tasks.find((t) => t.id === viewing));
+$("vCopy").onclick = async () => { const txt = [...$("vNo").querySelectorAll(".chip")].map((c) => c.textContent).join(", "); try { await navigator.clipboard.writeText(txt); App.toast("복사했어요"); } catch { App.toast(txt); } };
+
+Store.subscribe("tasks", load);
+render(); load();
+</script>
+</body>
+</html>
