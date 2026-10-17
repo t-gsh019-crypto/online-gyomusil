@@ -4,10 +4,22 @@
 
 | 앱 | 폴더 |
 |---|---|
+| 0. 메인 화면 (아이콘 13개) | `/` |
 | 1. 공지·업무 전달 게시판 | `notice/` |
 | 2. 학사 일정 캘린더 | `calendar/` |
+| 3. 시간표·수업 교체·보강 | `timetable/` |
+| 4. 자료실 | `files/` |
+| 5. 설문·회신 | `survey/` |
+| 6. 특별실·기자재 예약 | `booking/` |
+| 7. 업무 체크리스트 | `tasks/` |
+| 8. 교사 메신저 | `messenger/` |
+| 9. 회의록·협의록 | `minutes/` |
+| 10. 링크 모음 | `links/` |
+| 11. 수업 자료·지도안 | `lessons/` |
+| 12. 평가 계획·루브릭 | `assess/` |
+| 13. 학생·학부모 소통 (보호자 회신 화면: `family/?id=…`) | `family/` |
 
-- `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`), 부서 목록·색(`school.js`)
-- `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL
+- `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`), 부서 목록·색(`school.js`), 13개 앱 목록·아이콘(`apps.js`), 4~13번 앱 공통 도우미(`app.js`)
+- `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL. 01 → 01b → 02 → 03 → 04 순서로 SQL Editor에서 실행
 
 `shared/config.js`가 비어 있으면 체험 모드(이 브라우저에만 저장)로 동작해요.
