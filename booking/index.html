@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>특별실·기자재 예약</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #ef4444; --accent-2: #f97316; }
+  .rooms { display: flex; gap: 10px; margin-bottom: 14px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+  .rooms::-webkit-scrollbar { display: none; }
+  .rooms .room { flex: 0 0 150px; scroll-snap-align: start; }
+  .room { cursor: pointer; padding: 14px; display: grid; gap: 4px; border: 1.5px solid var(--border); }
+  .room.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .room .em { font-size: 26px; line-height: 1; }
+  .room b { font-size: 15px; letter-spacing: -0.02em; }
+  .room .muted { font-size: 12px; }
+  .room .free { font-size: 12px; font-weight: 700; color: var(--ok); }
+  .room .free.full { color: var(--danger); }
+  .week-nav { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; }
+  .week-nav h3 { margin: 0; flex: 1; font-size: 19px; font-weight: 800; letter-spacing: -0.03em; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 19px; cursor: pointer; display: grid; place-items: center; flex: none; }
+  .icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .tt { padding: 10px; overflow-x: auto; }
+  .tt table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; min-width: 340px; }
+  .tt th { font-size: 12px; font-weight: 700; color: var(--text-2); }
+  .tt th small { display: block; font-weight: 600; opacity: .7; }
+  .tt th.today { color: var(--accent); }
+  .tt td.p { width: 30px; text-align: center; font-size: 12px; font-weight: 800; color: var(--text-2); }
+  .slot { height: 56px; border-radius: 12px; border: 1.5px dashed var(--border); display: grid; place-items: center; font-size: 12px; color: var(--text-2); cursor: pointer; transition: .2s var(--ease); text-align: center; line-height: 1.25; padding: 3px; overflow: hidden; }
+  .slot:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .slot.taken { border: 0; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--text); cursor: default; }
+  .slot.taken b { display: block; font-size: 13px; color: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+  .slot.mine { background: var(--grad); color: #fff; cursor: pointer; }
+  .slot.mine b { color: #fff; }
+  .slot.past { opacity: .4; pointer-events: none; }
+  .slot span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .my { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .my .em { font-size: 24px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .emo { display: flex; gap: 6px; flex-wrap: wrap; }
+  .emo button { font-size: 22px; border: 1.5px solid var(--border); background: var(--surface); border-radius: 12px; width: 44px; height: 44px; cursor: pointer; }
+  .emo button.on { border-color: var(--accent); background: var(--accent-soft); }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="booking"></span><h1>특별실·기자재 예약</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">🔑 ROOM BOOKING</span>
+    <h2>특별실·기자재 <span class="grad">한 번에 예약</span></h2>
+    <p>빈 칸을 누르면 바로 예약돼요. 같은 시간에 두 번 예약되지 않아요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sToday">0</b><span>오늘 내 예약</span></div>
+      <div class="stat"><b id="sWeek">0</b><span>이번 주 내 예약</span></div>
+      <div class="stat"><b id="sRooms">0</b><span>예약할 수 있는 곳</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="book" class="on">📅 예약하기</button>
+    <button type="button" data-t="mine">🙋 내 예약</button>
+    <button type="button" data-t="rooms">⚙️ 장소·기자재 관리</button>
+  </nav>
+
+  <section id="v-book">
+    <div class="rooms" id="rooms"></div>
+    <div class="week-nav">
+      <h3 id="weekTitle"></h3>
+      <button class="icon-btn" id="prevW" type="button" aria-label="이전 주">‹</button>
+      <button class="icon-btn" id="thisW" type="button" style="font-size:12px;font-weight:800">오늘</button>
+      <button class="icon-btn" id="nextW" type="button" aria-label="다음 주">›</button>
+    </div>
+    <div class="card tt rise" id="grid"></div>
+  </section>
+  <section id="v-mine" class="hidden"><div id="mine"></div></section>
+  <section id="v-rooms" class="hidden">
+    <div id="roomList"></div>
+    <div class="row" style="margin-top:12px"><button class="btn small" id="addRoom" type="button">＋ 장소·기자재 추가</button><button class="btn small ghost hidden" id="seed" type="button">🏫 기본 목록 넣기</button></div>
+  </section>
+</main>
+
+<dialog id="bookDialog"><form method="dialog" id="bookForm">
+  <h2 id="bHead"></h2>
+  <p class="muted" id="bSub" style="margin:0"></p>
+  <div class="two">
+    <div><label for="bClass">학급</label><input id="bClass" required maxlength="10" placeholder="예: 2-3"></div>
+    <div><label for="bRepeat">반복</label><select id="bRepeat"><option value="1">이번만</option><option value="2">2주 연속</option><option value="4">4주 연속</option><option value="8">8주 연속</option></select></div>
+  </div>
+  <label for="bPurpose">사용 목적 (선택)</label><input id="bPurpose" maxlength="40" placeholder="예: 화학 실험, 영상 수업">
+  <p class="hint" id="bMsg" style="color:var(--danger);font-size:13px"></p>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">예약</button></div>
+</form></dialog>
+
+<dialog id="roomDialog"><form method="dialog" id="roomForm">
+  <h2 id="rHead">장소·기자재 추가</h2>
+  <label>아이콘</label><div class="emo" id="emo"></div>
+  <label for="rName">이름</label><input id="rName" required maxlength="20" placeholder="예: 과학실 1">
+  <div class="two">
+    <div><label for="rKind">종류</label><select id="rKind"><option>특별실</option><option>기자재</option></select></div>
+    <div><label for="rLoc">위치 (선택)</label><input id="rLoc" maxlength="20" placeholder="예: 본관 3층"></div>
+  </div>
+  <label for="rNote">안내 (선택)</label><input id="rNote" maxlength="60" placeholder="예: 사용 후 전원 끄기, 열쇠는 교무실">
+  <div class="actions"><button class="btn danger hidden" id="rDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, ymd, addDays, parse, md, DOW } = U;
+const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+const EMOJIS = ["🔬", "💻", "🎵", "🎬", "🎨", "🏀", "📚", "🧪", "📱", "🎤", "📽", "🧑‍🍳"];
+const SEED = [["🔬", "과학실 1", "특별실"], ["🧪", "과학실 2", "특별실"], ["💻", "컴퓨터실", "특별실"], ["🎵", "음악실", "특별실"], ["🎬", "시청각실", "특별실"], ["📱", "태블릿 카트 A", "기자재"], ["💻", "크롬북 카트", "기자재"]];
+const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
+// 주말에는 다음 주를 먼저 보여줌
+const thisWeek = () => { const d = new Date(); return monday(d.getDay() === 6 || d.getDay() === 0 ? addDays(d, 2) : d); };
+let rooms = [], bookings = [], room = null, tab = "book", weekStart = thisWeek(), pick = null, editRoom = null, emoji = EMOJIS[0];
+
+App.init({ onMe: render });
+try { room = localStorage.getItem("gyomusil:room") || null; } catch {}
+
+async function load() {
+  try { [rooms, bookings] = await Promise.all([Store.list("rooms"), Store.list("bookings")]); }
+  catch (e) { $("grid").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  rooms.sort((a, b) => (a.kind || "").localeCompare(b.kind || "", "ko") || a.name.localeCompare(b.name, "ko", { numeric: true }));
+  render();
+}
+const at = (rid, date, p) => bookings.find((b) => b.room_id === rid && b.date === date && b.period === p);
+const mine = () => bookings.filter((b) => App.me && b.booker === App.me.name);
+
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  ["book", "mine", "rooms"].forEach((t) => $("v-" + t).classList.toggle("hidden", tab !== t));
+  const tk = ymd(new Date()), ws = ymd(monday(new Date())), we = ymd(addDays(monday(new Date()), 4));
+  $("sToday").textContent = mine().filter((b) => b.date === tk).length;
+  $("sWeek").textContent = mine().filter((b) => b.date >= ws && b.date <= we).length;
+  $("sRooms").textContent = rooms.length;
+  if (!rooms.some((r) => r.id === room)) room = rooms[0]?.id || null;
+  if (tab === "book") renderBook();
+  if (tab === "mine") renderMine();
+  if (tab === "rooms") renderRooms();
+}
+
+function renderBook() {
+  const tk = ymd(new Date());
+  $("rooms").innerHTML = rooms.map((r) => {
+    const freeToday = PERIODS.filter((p) => !at(r.id, tk, p)).length;
+    return `<div class="card lift room ${r.id === room ? "on" : ""}" data-id="${r.id}"><span class="em">${esc(r.emoji || "📍")}</span><b>${esc(r.name)}</b>
+      <span class="muted">${esc(r.kind || "")}${r.location ? " · " + esc(r.location) : ""}</span><span class="free ${freeToday ? "" : "full"}">오늘 빈 시간 ${freeToday}개</span></div>`;
+  }).join("") || "";
+  if (!rooms.length) { $("grid").innerHTML = App.empty("예약할 곳이 없어요", "[⚙️ 장소·기자재 관리]에서 과학실·태블릿 카트 등을 추가해 주세요.", "🏫"); $("weekTitle").textContent = ""; return; }
+  const r = rooms.find((x) => x.id === room);
+  const days = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+  $("weekTitle").textContent = `${r.emoji || ""} ${r.name} · ${days[0].getMonth() + 1}/${days[0].getDate()}–${days[4].getMonth() + 1}/${days[4].getDate()}`;
+  let html = `<table><thead><tr><th></th>${days.map((d) => `<th class="${ymd(d) === tk ? "today" : ""}">${DOW[d.getDay()]}<small>${d.getMonth() + 1}/${d.getDate()}</small></th>`).join("")}</tr></thead><tbody>`;
+  for (const p of PERIODS) {
+    html += `<tr><td class="p">${p}</td>`;
+    for (const d of days) {
+      const key = ymd(d), b = at(r.id, key, p), isMine = b && App.me && b.booker === App.me.name;
+      html += `<td><div class="slot ${b ? "taken" : ""} ${isMine ? "mine" : ""} ${key < tk && !b ? "past" : ""}" data-date="${key}" data-p="${p}" ${b ? `data-id="${b.id}"` : ""}>${b ? `<div><b>${esc(b.class_name)}</b><span>${esc(b.booker)}</span></div>` : "＋"}</div></td>`;
+    }
+    html += "</tr>";
+  }
+  $("grid").innerHTML = html + "</tbody></table>" + (r.note ? `<p class="muted" style="margin:10px 4px 0">📌 ${esc(r.note)}</p>` : "");
+}
+
+function renderMine() {
+  const tk = ymd(new Date());
+  const list = mine().filter((b) => b.date >= tk).sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period);
+  $("mine").innerHTML = list.map((b) => {
+    const r = rooms.find((x) => x.id === b.room_id);
+    return `<div class="card my rise"><span class="em">${esc(r?.emoji || "📍")}</span><div class="grow"><b>${esc(r?.name || "(삭제된 장소)")}</b><div class="muted">${md(b.date)} ${b.period}교시 · ${esc(b.class_name)}${b.purpose ? " · " + esc(b.purpose) : ""}</div></div>
+      <button class="btn small danger" data-cancel="${b.id}">취소</button></div>`;
+  }).join("") || App.empty("앞으로 예정된 예약이 없어요", "[📅 예약하기]에서 빈 칸을 눌러 보세요.", "🗓");
+}
+
+function renderRooms() {
+  $("seed").classList.toggle("hidden", rooms.length > 0);
+  $("roomList").innerHTML = rooms.map((r) => `<div class="card my rise"><span class="em">${esc(r.emoji || "📍")}</span><div class="grow"><b>${esc(r.name)}</b><div class="muted">${esc(r.kind)}${r.location ? " · " + esc(r.location) : ""}${r.note ? " · " + esc(r.note) : ""}</div></div><button class="btn small ghost" data-edit="${r.id}">수정</button></div>`).join("")
+    || App.empty("등록된 곳이 없어요", "[🏫 기본 목록 넣기]로 과학실·컴퓨터실 등을 한 번에 넣을 수 있어요.", "🏫");
+}
+
+/* 예약 */
+$("rooms").onclick = (e) => { const c = e.target.closest(".room"); if (c) { room = c.dataset.id; try { localStorage.setItem("gyomusil:room", room); } catch {} render(); } };
+$("grid").onclick = async (e) => {
+  const s = e.target.closest(".slot"); if (!s) return;
+  if (s.dataset.id) {
+    const b = bookings.find((x) => x.id === s.dataset.id);
+    if (App.me && b.booker === App.me.name && (await App.confirm(`${md(b.date)} ${b.period}교시 예약을 취소할까요?`, "예약 취소"))) { await Store.remove("bookings", b.id); load(); }
+    return;
+  }
+  if (!App.need()) return;
+  pick = { date: s.dataset.date, period: +s.dataset.p };
+  const r = rooms.find((x) => x.id === room);
+  $("bookForm").reset(); $("bMsg").textContent = "";
+  $("bHead").textContent = `${r.emoji || ""} ${r.name}`;
+  $("bSub").textContent = `${md(pick.date)} ${pick.period}교시`;
+  try { $("bClass").value = localStorage.getItem("gyomusil:last-class") || ""; } catch {}
+  $("bookDialog").showModal();
+};
+$("bookForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  e.preventDefault();
+  await load(); // 최신 상태로 다시 확인해서 겹치는 예약 막기
+  const n = +$("bRepeat").value, made = [], skipped = [];
+  for (let w = 0; w < n; w++) {
+    const date = ymd(addDays(parse(pick.date), w * 7));
+    if (at(room, date, pick.period)) { skipped.push(md(date)); continue; }
+    try {
+      made.push(await Store.insert("bookings", { room_id: room, date, period: pick.period, class_name: $("bClass").value.trim(), purpose: $("bPurpose").value.trim() || null, booker: App.me.name }));
+    } catch { skipped.push(md(date)); }
+  }
+  try { localStorage.setItem("gyomusil:last-class", $("bClass").value.trim()); } catch {}
+  $("bookDialog").close();
+  App.toast(skipped.length ? `${made.length}건 예약 · 이미 찬 날 ${skipped.join(", ")}은 건너뛰었어요` : `${made.length}건 예약했어요`);
+  load();
+});
+$("mine").onclick = async (e) => { const b = e.target.closest("[data-cancel]"); if (b && (await App.confirm("이 예약을 취소할까요?", "예약 취소"))) { await Store.remove("bookings", b.dataset.cancel); load(); } };
+
+/* 장소 관리 */
+function paintEmo() { $("emo").innerHTML = EMOJIS.map((x) => `<button type="button" class="${x === emoji ? "on" : ""}">${x}</button>`).join(""); }
+$("emo").onclick = (e) => { const b = e.target.closest("button"); if (b) { emoji = b.textContent; paintEmo(); } };
+function openRoom(r) {
+  if (!App.need()) return;
+  editRoom = r || null; emoji = r?.emoji || EMOJIS[0]; paintEmo();
+  $("roomForm").reset();
+  $("rHead").textContent = r ? "장소·기자재 수정" : "장소·기자재 추가";
+  if (r) { $("rName").value = r.name; $("rKind").value = r.kind; $("rLoc").value = r.location || ""; $("rNote").value = r.note || ""; }
+  $("rDel").classList.toggle("hidden", !r);
+  $("roomDialog").showModal();
+}
+$("addRoom").onclick = () => openRoom();
+$("roomList").onclick = (e) => { const b = e.target.closest("[data-edit]"); if (b) openRoom(rooms.find((r) => r.id === b.dataset.edit)); };
+$("roomForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const row = { name: $("rName").value.trim(), kind: $("rKind").value, location: $("rLoc").value.trim() || null, note: $("rNote").value.trim() || null, emoji };
+  if (editRoom) await Store.update("rooms", editRoom.id, row); else room = (await Store.insert("rooms", row)).id;
+  load();
+});
+$("rDel").onclick = async () => {
+  if (!(await App.confirm(`${editRoom.name}과 예약 기록을 삭제할까요?`, "삭제"))) return;
+  $("roomDialog").close();
+  await Promise.all(bookings.filter((b) => b.room_id === editRoom.id).map((b) => Store.remove("bookings", b.id)));
+  await Store.remove("rooms", editRoom.id); load();
+};
+$("seed").onclick = async () => { if (rooms.length) return; for (const [em, name, kind] of SEED) await Store.insert("rooms", { emoji: em, name, kind }); tab = "book"; load(); };
+
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.t; render(); } };
+$("prevW").onclick = () => { weekStart = addDays(weekStart, -7); render(); };
+$("nextW").onclick = () => { weekStart = addDays(weekStart, 7); render(); };
+$("thisW").onclick = () => { weekStart = thisWeek(); render(); };
+
+Store.subscribe("rooms", load);
+Store.subscribe("bookings", load);
+render(); load();
+</script>
+</body>
+</html>

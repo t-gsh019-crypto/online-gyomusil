@@ -291,6 +291,8 @@ const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
+// 주말에는 다음 주를 먼저 보여줌
+const thisWeek = () => { const d = new Date(); return monday(d.getDay() === 6 || d.getDay() === 0 ? addDays(d, 2) : d); };
 const dowOf = (s) => parse(s).getDay();
 const md = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`; };
 const fmt = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -298,7 +300,7 @@ const dayDiff = (a, b) => Math.round((parse(a) - parse(b)) / 864e5);
 const todayKey = () => ymd(new Date());
 
 let slots = [], reqs = [], me = Me.get();
-let tab = "grid", gridMode = "teacher", who = me?.name || "", weekStart = monday(new Date()), editing = false, editCell = null;
+let tab = "grid", gridMode = "teacher", who = me?.name || "", weekStart = thisWeek(), editing = false, editCell = null;
 let openPanel = null;   // 도우미에서 펼친 수업 {key, type}
 let pendingSend = null; // 보내기 전 요청
 
@@ -731,7 +733,7 @@ $("gridMode").onclick = (e) => { const b = e.target.closest("button"); if (!b) r
 $("whoSel").onchange = () => { who = $("whoSel").value; render(); };
 $("prevW").onclick = () => { weekStart = addDays(weekStart, -7); render(); };
 $("nextW").onclick = () => { weekStart = addDays(weekStart, 7); render(); };
-$("thisW").onclick = () => { weekStart = monday(new Date()); render(); };
+$("thisW").onclick = () => { weekStart = thisWeek(); render(); };
 $("editBtn").onclick = () => { editing = !editing; render(); };
 $("fab").onclick = () => { if (!me) return askMe(); tab = "helper"; $("hWho").value = me.name; render(); };
 
