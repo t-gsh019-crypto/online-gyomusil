@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공지·업무 전달</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f6fed'/%3E%3Cpath d='M16 28h8l18-10v28L24 36h-8z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #2f6fed; }
+  .toolbar { display: flex; gap: 8px; margin: 16px 0 8px; flex-wrap: wrap; }
+  .toolbar input { flex: 1; min-width: 160px; }
+  .toolbar select { width: auto; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+  .tabs button {
+    flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .list { display: grid; gap: 10px; }
+  .notice { cursor: pointer; display: grid; gap: 6px; }
+  .notice:hover { border-color: var(--accent); }
+  .notice.pinned { border-left: 4px solid var(--accent); }
+  .notice h3 { margin: 0; font-size: 16px; display: flex; gap: 6px; align-items: center; }
+  .notice .preview { color: var(--text-2); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex: none; }
+  .empty { text-align: center; padding: 48px 16px; color: var(--text-2); }
+  .empty svg { width: 96px; height: 96px; opacity: .8; }
+  .fab {
+    position: fixed; right: max(16px, calc(50vw - 364px)); bottom: 20px; border-radius: 999px;
+    padding: 14px 20px; box-shadow: 0 6px 20px rgba(47, 111, 237, .35);
+  }
+  .detail-body { white-space: pre-wrap; margin: 12px 0; }
+  .readers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .check { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--text); font-size: 15px; }
+  .check input { width: auto; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <svg class="app-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="16" fill="#2f6fed"/>
+      <path d="M14 27h9l19-11v32L23 37h-9a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3z" fill="#fff"/>
+      <path d="M20 37l4 11h6l-3-11" fill="#cfe0ff"/>
+      <path d="M47 25c3 2 3 12 0 14M51 21c6 4 6 18 0 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>
+    <h1>공지·업무 전달</h1>
+    <button class="me-chip" id="meChip" type="button">내 정보</button>
+    <a class="home-link" href="../">← 메인</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">체험 모드예요. 지금은 이 기기에만 저장되고, 저장소를 연결하면 모든 선생님이 함께 보게 돼요.</div>
+
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="제목·내용 검색">
+    <select id="readFilter" aria-label="읽음 필터">
+      <option value="all">전체 글</option>
+      <option value="unread">안 읽은 글만</option>
+      <option value="mine">내가 쓴 글</option>
+    </select>
+  </div>
+  <nav class="tabs" id="tabs" aria-label="대상"></nav>
+  <section class="list" id="list"></section>
+</main>
+
+<button class="btn fab" id="writeBtn" type="button">＋ 공지 쓰기</button>
+
+<!-- 내 정보 -->
+<dialog id="meDialog">
+  <form method="dialog" id="meForm">
+    <h2>선생님 정보</h2>
+    <p class="muted">누가 쓰고 읽었는지 표시하는 데 써요.</p>
+    <label for="meName">이름</label>
+    <input id="meName" required maxlength="20" placeholder="예: 김민지">
+    <label for="meGroup">소속</label>
+    <select id="meGroup"></select>
+    <div class="actions"><button class="btn" value="ok">저장</button></div>
+  </form>
+</dialog>
+
+<!-- 공지 쓰기 -->
+<dialog id="writeDialog">
+  <form method="dialog" id="writeForm">
+    <h2>공지 쓰기</h2>
+    <label for="wTitle">제목</label>
+    <input id="wTitle" required maxlength="80">
+    <label for="wTarget">받는 대상</label>
+    <select id="wTarget"></select>
+    <label for="wBody">내용</label>
+    <textarea id="wBody" required></textarea>
+    <label for="wLink">첨부 링크 (구글 드라이브 등, 선택)</label>
+    <input id="wLink" type="url" placeholder="https://">
+    <label class="check"><input type="checkbox" id="wPinned"> 중요 공지로 맨 위에 고정</label>
+    <div class="actions">
+      <button class="btn ghost" value="cancel" formnovalidate>취소</button>
+      <button class="btn" value="ok">올리기</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 공지 보기 -->
+<dialog id="viewDialog">
+  <h2 id="vTitle"></h2>
+  <div class="row muted" id="vMeta"></div>
+  <div class="detail-body" id="vBody"></div>
+  <div id="vLink"></div>
+  <div class="card" style="margin-top:12px;padding:12px">
+    <strong id="vReadCount"></strong>
+    <div class="readers" id="vReaders"></div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost hidden" id="vPin" type="button"></button>
+    <button class="btn ghost hidden" id="vDelete" type="button" style="color:var(--danger)">삭제</button>
+    <button class="btn" id="vClose" type="button">닫기</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script>
+const GROUPS = ["전체", "1학년", "2학년", "3학년", "교무부", "연구부", "학생부", "정보부", "행정실"];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (iso) => {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+let notices = [], reads = [], tab = "전체", me = Me.get(), openId = null;
+
+if (Store.mode === "local") $("modeBanner").classList.remove("hidden");
+$("meGroup").innerHTML = GROUPS.slice(1).map((g) => `<option>${g}</option>`).join("");
+$("wTarget").innerHTML = GROUPS.map((g) => `<option>${g}</option>`).join("");
+$("tabs").innerHTML = GROUPS.map((g) => `<button type="button" data-g="${g}">${g}</button>`).join("");
+
+function askMe() {
+  $("meName").value = me?.name || "";
+  $("meGroup").value = me?.group || GROUPS[1];
+  $("meDialog").showModal();
+}
+$("meForm").addEventListener("submit", () => {
+  me = { name: $("meName").value.trim(), group: $("meGroup").value };
+  Me.set(me);
+  paintMe();
+  render();
+});
+$("meChip").onclick = askMe;
+function paintMe() { $("meChip").textContent = me ? `${me.name} · ${me.group}` : "내 정보"; }
+
+const readersOf = (id) => reads.filter((r) => r.notice_id === id);
+const iRead = (id) => me && readersOf(id).some((r) => r.reader === me.name);
+
+async function load() {
+  try {
+    [notices, reads] = await Promise.all([Store.list("notices"), Store.list("notice_reads")]);
+  } catch (e) {
+    $("list").innerHTML = `<div class="card">불러오지 못했어요: ${esc(e.message)}</div>`;
+    return;
+  }
+  render();
+  if (openId) paintView(openId);
+}
+
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.g === tab));
+  const q = $("search").value.trim().toLowerCase();
+  const f = $("readFilter").value;
+  const rows = notices
+    .filter((n) => tab === "전체" || n.target === tab || n.target === "전체")
+    .filter((n) => !q || (n.title + " " + n.body).toLowerCase().includes(q))
+    .filter((n) => f === "all" || (f === "unread" ? !iRead(n.id) : n.author === me?.name))
+    .sort((a, b) => (b.pinned - a.pinned) || b.created_at.localeCompare(a.created_at));
+
+  if (!rows.length) {
+    $("list").innerHTML = `<div class="empty">
+      <svg viewBox="0 0 96 96" aria-hidden="true"><rect x="14" y="18" width="68" height="60" rx="10" fill="var(--surface-2)"/>
+      <rect x="24" y="32" width="40" height="6" rx="3" fill="var(--border)"/><rect x="24" y="44" width="48" height="6" rx="3" fill="var(--border)"/>
+      <rect x="24" y="56" width="30" height="6" rx="3" fill="var(--border)"/></svg>
+      <p>아직 공지가 없어요.<br>오른쪽 아래 버튼으로 첫 공지를 올려보세요.</p></div>`;
+    return;
+  }
+  $("list").innerHTML = rows.map((n) => {
+    const cnt = readersOf(n.id).length;
+    return `<article class="card notice ${n.pinned ? "pinned" : ""}" data-id="${n.id}">
+      <h3>${!iRead(n.id) ? '<span class="dot" title="안 읽음"></span>' : ""}${n.pinned ? "📌 " : ""}${esc(n.title)}</h3>
+      <div class="preview">${esc(n.body)}</div>
+      <div class="row muted">
+        <span class="chip accent">${esc(n.target)}</span>
+        <span>${esc(n.author)}</span><span>·</span><span>${fmt(n.created_at)}</span>
+        <span class="grow"></span><span>읽음 ${cnt}명</span>
+      </div></article>`;
+  }).join("");
+}
+
+$("tabs").onclick = (e) => { if (e.target.dataset.g) { tab = e.target.dataset.g; render(); } };
+$("search").oninput = render;
+$("readFilter").onchange = render;
+$("list").onclick = (e) => { const c = e.target.closest(".notice"); if (c) openView(c.dataset.id); };
+
+$("writeBtn").onclick = () => {
+  if (!me) return askMe();
+  $("writeForm").reset();
+  $("wTarget").value = "전체";
+  $("writeDialog").showModal();
+};
+$("writeForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  await Store.insert("notices", {
+    title: $("wTitle").value.trim(),
+    body: $("wBody").value.trim(),
+    target: $("wTarget").value,
+    link: $("wLink").value.trim() || null,
+    pinned: $("wPinned").checked,
+    author: me.name,
+    author_group: me.group,
+  });
+  load();
+});
+
+async function openView(id) {
+  openId = id;
+  paintView(id);
+  $("viewDialog").showModal();
+  if (me && !iRead(id)) {
+    await Store.insert("notice_reads", { notice_id: id, reader: me.name, reader_group: me.group });
+    load();
+  }
+}
+function paintView(id) {
+  const n = notices.find((x) => x.id === id);
+  if (!n) return;
+  const rs = readersOf(id);
+  $("vTitle").textContent = (n.pinned ? "📌 " : "") + n.title;
+  $("vMeta").innerHTML = `<span class="chip accent">${esc(n.target)}</span><span>${esc(n.author)} (${esc(n.author_group)})</span><span>·</span><span>${fmt(n.created_at)}</span>`;
+  $("vBody").textContent = n.body;
+  $("vLink").innerHTML = n.link && /^https?:\/\//.test(n.link) ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">📎 첨부 열기</a>` : "";
+  $("vReadCount").textContent = `읽은 선생님 ${rs.length}명`;
+  $("vReaders").innerHTML = rs.map((r) => `<span class="chip">${esc(r.reader)}</span>`).join("") || '<span class="muted">아직 없어요</span>';
+  const mine = me && n.author === me.name;
+  $("vDelete").classList.toggle("hidden", !mine);
+  $("vPin").classList.toggle("hidden", !mine);
+  $("vPin").textContent = n.pinned ? "고정 해제" : "맨 위 고정";
+}
+$("vClose").onclick = () => { openId = null; $("viewDialog").close(); };
+$("viewDialog").addEventListener("close", () => { openId = null; });
+$("vDelete").onclick = async () => {
+  const id = openId;
+  $("viewDialog").close();
+  await Store.remove("notices", id);
+  load();
+};
+$("vPin").onclick = async () => {
+  const n = notices.find((x) => x.id === openId);
+  await Store.update("notices", n.id, { pinned: !n.pinned });
+  load();
+};
+
+Store.subscribe("notices", load);
+Store.subscribe("notice_reads", load);
+paintMe();
+load();
+if (!me) askMe();
+</script>
+</body>
+</html>
