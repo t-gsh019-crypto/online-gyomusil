@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수업 자료·지도안</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #ca8a04; --accent-2: #65a30d; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .filters select { width: auto; }
+  .filters input { flex: 1; min-width: 160px; }
+  .unit { margin-top: 18px; }
+  .unit-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; }
+  .unit-head h3 { margin: 0; font-size: 16px; letter-spacing: -0.02em; }
+  .unit-head .muted { font-size: 12px; }
+  .lessons { display: grid; gap: 10px; }
+  .ls { display: grid; grid-template-columns: 52px 1fr; gap: 12px; cursor: pointer; padding: 14px 16px; align-items: start; }
+  .no { width: 52px; height: 52px; border-radius: 16px; background: var(--grad); color: #fff; display: grid; place-items: center; text-align: center; line-height: 1.05; font-weight: 800; font-size: 18px; }
+  .no small { display: block; font-size: 10px; font-weight: 700; opacity: .9; }
+  .ls h4 { margin: 0 0 4px; font-size: 16px; letter-spacing: -0.02em; }
+  .ls .goal { font-size: 13px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ls .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+  .avs { display: inline-flex; }
+  .avs .avatar { width: 22px; height: 22px; font-size: 9px; margin-left: -6px; border: 2px solid var(--surface-solid); }
+  .avs .avatar:first-child { margin-left: 0; }
+  .plan { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  .plan th, .plan td { border: 1px solid var(--border); padding: 8px; vertical-align: top; text-align: left; }
+  .plan th { background: var(--surface-2); font-size: 12px; color: var(--text-2); white-space: nowrap; }
+  .plan td { white-space: pre-wrap; }
+  .plan td.st { font-weight: 800; color: var(--accent); white-space: nowrap; }
+  .plan-edit { display: grid; gap: 8px; }
+  .pe { display: grid; grid-template-columns: 80px 64px 1fr; gap: 6px; padding: 10px; border-radius: 14px; background: var(--surface-2); }
+  .pe textarea { min-height: 60px; grid-column: 1 / -1; }
+  .pe .x { justify-self: end; }
+  .mats { display: grid; gap: 6px; margin-top: 6px; }
+  .mat { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+  .mat a { color: var(--text); text-decoration: none; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .x { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 16px; }
+  .x:hover { color: var(--danger); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .like { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .like.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  @media (min-width: 561px) { #editDialog, #viewDialog { width: min(760px, calc(100vw - 24px)); } }
+  @media print {
+    body > *:not(#viewDialog) { display: none !important; }
+    #viewDialog { position: static; box-shadow: none; border: 0; width: 100%; max-height: none; }
+    #viewDialog .actions, #viewDialog .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="lessons"></span><h1>수업 자료·지도안</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장되고, 2MB 이하 파일만 올릴 수 있어요.</div>
+  <section class="hero">
+    <span class="eyebrow">📖 LESSON PLANS</span>
+    <h2>같은 학년끼리 <span class="grad">함께 만드는 수업</span></h2>
+    <p>단원·차시별로 지도안과 자료를 모으고, 누구나 이어서 다듬어요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sAll">0</b><span>차시 지도안</span></div>
+      <div class="stat"><b id="sMats">0</b><span>수업 자료</span></div>
+      <div class="stat"><b id="sMine">0</b><span>내가 참여</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="grades"></nav>
+  <div class="filters">
+    <select id="subject" aria-label="과목"></select>
+    <input id="q" type="search" placeholder="단원·제목·목표 검색" aria-label="검색">
+  </div>
+  <section id="list"></section>
+</main>
+<button class="btn fab" id="newBtn" type="button">＋ 차시 추가</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">차시 추가</h2>
+  <div class="three">
+    <div><label for="eSubject">과목</label><input id="eSubject" required maxlength="12" list="subjList" placeholder="예: 국어"></div>
+    <div><label for="eGrade">학년</label><select id="eGrade"><option>1학년</option><option>2학년</option><option>3학년</option></select></div>
+    <div><label for="eNo">차시</label><input id="eNo" type="number" min="1" max="200" required></div>
+  </div>
+  <datalist id="subjList"></datalist><datalist id="unitList"></datalist>
+  <label for="eUnit">단원</label><input id="eUnit" required maxlength="40" list="unitList" placeholder="예: 1. 문학의 즐거움">
+  <label for="eTitle">차시 제목</label><input id="eTitle" required maxlength="60">
+  <label for="eGoal">학습 목표</label><textarea id="eGoal" style="min-height:56px"></textarea>
+  <label>지도안 (단계별 활동)</label>
+  <div class="plan-edit" id="ePlan"></div>
+  <button class="btn small ghost" id="addStep" type="button" style="margin-top:6px">＋ 단계 추가</button>
+  <label>수업 자료</label>
+  <div class="mats" id="eMats"></div>
+  <div class="row" style="margin-top:6px">
+    <label class="btn small ghost" style="margin:0">📎 파일 올리기<input type="file" id="eFile" hidden multiple></label>
+    <button class="btn small ghost" id="addLink" type="button">🔗 링크 추가</button>
+  </div>
+  <p class="hint" id="eMsg" style="font-size:13px;color:var(--danger)"></p>
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="viewDialog">
+  <div id="vBody"></div>
+  <div class="actions"><button class="btn ghost" id="vCopy" type="button">📄 복제</button><button class="btn ghost" id="vPrint" type="button">🖨 인쇄</button><button class="btn ghost" id="vEdit" type="button">✏️ 함께 고치기</button><button class="btn" id="vClose" type="button">닫기</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, fmt } = U;
+const SUBJECTS = ["국어", "수학", "영어", "사회", "과학", "역사", "도덕", "기술·가정", "정보", "음악", "미술", "체육", "진로"];
+const DEFAULT_PLAN = [{ step: "도입", time: "5분", act: "", note: "" }, { step: "전개", time: "35분", act: "", note: "" }, { step: "정리", time: "5분", act: "", note: "" }];
+let items = [], grade = "전체", editing = null, viewing = null, plan = [], mats = [];
+try { $("subject").dataset.saved = localStorage.getItem("gyomusil:lesson-subj") || ""; } catch {}
+
+App.init({ onMe: render });
+$("grades").innerHTML = ["전체", "1학년", "2학년", "3학년"].map((g) => `<button type="button" data-g="${g}">${g}</button>`).join("");
+
+async function load() {
+  try { items = await Store.list("lesson_plans"); } catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  items.forEach((x) => ["plan", "materials", "contributors", "likes"].forEach((k) => { if (typeof x[k] === "string") x[k] = JSON.parse(x[k]); }));
+  render();
+  if (viewing) paintView(viewing);
+}
+
+function render() {
+  [...$("grades").children].forEach((b) => b.classList.toggle("on", b.dataset.g === grade));
+  const subjects = [...new Set([...items.map((x) => x.subject), ...SUBJECTS])];
+  const cur = $("subject").value || $("subject").dataset.saved || "";
+  $("subject").innerHTML = `<option value="">모든 과목</option>` + subjects.map((s) => `<option ${s === cur ? "selected" : ""}>${esc(s)}</option>`).join("");
+  $("subjList").innerHTML = subjects.map((s) => `<option value="${esc(s)}">`).join("");
+  $("sAll").textContent = items.length;
+  $("sMats").textContent = items.reduce((n, x) => n + (x.materials || []).length, 0);
+  $("sMine").textContent = items.filter((x) => App.me && (x.contributors || []).includes(App.me.name)).length;
+  const subj = $("subject").value, q = $("q").value.trim();
+  const rows = items.filter((x) => grade === "전체" || x.grade === grade).filter((x) => !subj || x.subject === subj)
+    .filter((x) => !q || [x.unit, x.title, x.goal].join(" ").includes(q));
+  const units = {};
+  rows.forEach((x) => { const k = `${x.grade}|${x.subject}|${x.unit}`; (units[k] = units[k] || []).push(x); });
+  const keys = Object.keys(units).sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+  $("list").innerHTML = keys.map((k) => {
+    const [g, s, u] = k.split("|"), ls = units[k].sort((a, b) => a.lesson_no - b.lesson_no);
+    return `<div class="unit"><div class="unit-head"><span class="chip accent">${esc(g)} ${esc(s)}</span><h3>${esc(u)}</h3><span class="muted">${ls.length}차시</span></div>
+      <div class="lessons">${ls.map((x, i) => `<article class="card lift ls rise" style="animation-delay:${Math.min(i, 10) * 30}ms" data-id="${x.id}">
+        <div class="no">${x.lesson_no}<small>차시</small></div>
+        <div><h4>${esc(x.title)}</h4><div class="goal">${esc(x.goal || "")}</div>
+          <div class="meta"><span class="avs">${(x.contributors || []).slice(0, 4).map((n) => App.avatar(n)).join("")}</span>
+            ${(x.materials || []).length ? `<span>📎 ${x.materials.length}</span>` : ""}${(x.likes || []).length ? `<span>👍 ${x.likes.length}</span>` : ""}<span>· ${fmt(x.updated_at || x.created_at)} ${esc(x.updated_by || x.author)}</span></div></div>
+      </article>`).join("")}</div></div>`;
+  }).join("") || App.empty("아직 지도안이 없어요", "오른쪽 아래 버튼으로 첫 차시를 추가해 보세요.", "📖");
+}
+$("grades").onclick = (e) => { const b = e.target.closest("button"); if (b) { grade = b.dataset.g; render(); } };
+$("subject").onchange = () => { try { localStorage.setItem("gyomusil:lesson-subj", $("subject").value); } catch {} $("subject").dataset.saved = $("subject").value; render(); };
+$("q").oninput = render;
+$("list").onclick = (e) => { const c = e.target.closest(".ls"); if (c) openView(c.dataset.id); };
+
+/* 편집 */
+function paintPlan() {
+  $("ePlan").innerHTML = plan.map((p, i) => `<div class="pe">
+    <input data-i="${i}" data-f="step" value="${esc(p.step)}" placeholder="단계"><input data-i="${i}" data-f="time" value="${esc(p.time)}" placeholder="시간">
+    <button type="button" class="x" data-rm="${i}" aria-label="단계 삭제">✕</button>
+    <textarea data-i="${i}" data-f="act" placeholder="교수·학습 활동">${esc(p.act)}</textarea>
+    <input data-i="${i}" data-f="note" value="${esc(p.note)}" placeholder="자료 및 유의점" style="grid-column:1/-1"></div>`).join("");
+}
+$("ePlan").addEventListener("input", (e) => { const t = e.target; if (t.dataset.f) plan[+t.dataset.i][t.dataset.f] = t.value; });
+$("ePlan").addEventListener("click", (e) => { if (e.target.dataset.rm) { plan.splice(+e.target.dataset.rm, 1); paintPlan(); } });
+$("addStep").onclick = () => { plan.push({ step: "", time: "", act: "", note: "" }); paintPlan(); };
+function paintMats() {
+  $("eMats").innerHTML = mats.map((m, i) => `<div class="mat">${m.kind === "link" ? "🔗" : "📎"}<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a><button type="button" class="x" data-rmm="${i}">✕</button></div>`).join("") || '<span class="muted" style="font-size:13px">학습지, PPT, 영상 링크 등을 붙여요.</span>';
+}
+$("eMats").onclick = (e) => { if (e.target.dataset.rmm) { mats.splice(+e.target.dataset.rmm, 1); paintMats(); } };
+$("eFile").onchange = async () => {
+  $("eMsg").textContent = "";
+  for (const f of $("eFile").files) {
+    try { App.toast(`${f.name} 올리는 중…`); mats.push({ kind: "file", name: f.name, url: await Store.upload(f, "lessons") }); paintMats(); }
+    catch (err) { $("eMsg").textContent = `${f.name}: ${err.message}`; }
+  }
+  $("eFile").value = "";
+};
+$("addLink").onclick = () => {
+  const d = document.createElement("dialog");
+  d.innerHTML = `<form method="dialog"><h2>링크 추가</h2><label>주소</label><input name="u" type="url" required placeholder="https://"><label>이름</label><input name="n" placeholder="예: 도입 영상"><div class="actions"><button class="btn ghost" value="c" formnovalidate>취소</button><button class="btn" value="ok">추가</button></div></form>`;
+  d.querySelector("form").addEventListener("submit", (e) => { if (e.submitter?.value === "ok") { const u = d.querySelector("[name=u]").value.trim(); mats.push({ kind: "link", url: u, name: d.querySelector("[name=n]").value.trim() || u }); paintMats(); } });
+  d.addEventListener("close", () => d.remove());
+  document.body.append(d); d.showModal();
+};
+function openEdit(x, copy) {
+  if (!App.need()) return;
+  editing = copy ? null : x || null;
+  $("editForm").reset(); $("eMsg").textContent = "";
+  $("eHead").textContent = copy ? "복제해서 새 차시 만들기" : x ? "함께 고치기" : "차시 추가";
+  const subj = $("subject").value;
+  $("eSubject").value = x?.subject || subj || "";
+  $("eGrade").value = x?.grade || (grade !== "전체" ? grade : (App.me.group.match(/^\d학년/)?.[0] || "1학년"));
+  $("unitList").innerHTML = [...new Set(items.map((i) => i.unit))].map((u) => `<option value="${esc(u)}">`).join("");
+  if (x) { $("eUnit").value = x.unit; $("eTitle").value = x.title + (copy ? " (복제)" : ""); $("eGoal").value = x.goal || ""; $("eNo").value = copy ? x.lesson_no + 1 : x.lesson_no; }
+  else { const same = items.filter((i) => i.subject === $("eSubject").value && i.grade === $("eGrade").value); $("eNo").value = Math.max(0, ...same.map((i) => i.lesson_no)) + 1; $("eUnit").value = same.sort((a, b) => b.lesson_no - a.lesson_no)[0]?.unit || ""; }
+  plan = (x?.plan || DEFAULT_PLAN).map((p) => ({ ...p }));
+  mats = (x?.materials || []).map((m) => ({ ...m }));
+  paintPlan(); paintMats();
+  $("eDel").classList.toggle("hidden", !(editing && editing.author === App.me.name));
+  $("editDialog").showModal();
+}
+$("newBtn").onclick = () => openEdit();
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const now = new Date().toISOString();
+  const row = { subject: $("eSubject").value.trim(), grade: $("eGrade").value, lesson_no: +$("eNo").value, unit: $("eUnit").value.trim(), title: $("eTitle").value.trim(),
+    goal: $("eGoal").value.trim(), plan: plan.filter((p) => p.step || p.act), materials: mats, updated_at: now, updated_by: App.me.name };
+  if (editing) await Store.update("lesson_plans", editing.id, { ...row, contributors: [...new Set([...(editing.contributors || []), App.me.name])] });
+  else await Store.insert("lesson_plans", { ...row, contributors: [App.me.name], likes: [], author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => { if (!(await App.confirm("이 차시를 삭제할까요?", "삭제"))) return; $("editDialog").close(); $("viewDialog").close(); await Store.remove("lesson_plans", editing.id); load(); };
+
+/* 보기 */
+function openView(id) { viewing = id; paintView(id); $("viewDialog").showModal(); }
+function paintView(id) {
+  const x = items.find((i) => i.id === id); if (!x) return;
+  const liked = App.me && (x.likes || []).includes(App.me.name);
+  $("vBody").innerHTML = `<div class="row"><span class="chip accent">${esc(x.grade)} ${esc(x.subject)}</span><span class="muted">${esc(x.unit)}</span></div>
+    <h2 style="margin:10px 0 4px">${x.lesson_no}차시 · ${esc(x.title)}</h2>
+    ${x.goal ? `<p style="margin:6px 0 12px"><b>🎯 학습 목표</b><br>${esc(x.goal)}</p>` : ""}
+    ${(x.plan || []).length ? `<table class="plan"><thead><tr><th>단계</th><th>시간</th><th>교수·학습 활동</th><th>자료·유의점</th></tr></thead><tbody>${x.plan.map((p) => `<tr><td class="st">${esc(p.step)}</td><td>${esc(p.time)}</td><td>${esc(p.act)}</td><td>${esc(p.note)}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${(x.materials || []).length ? `<h4 style="margin:16px 0 6px">📎 수업 자료</h4><div class="mats">${x.materials.map((m) => `<div class="mat">${m.kind === "link" ? "🔗" : "📎"}<a href="${esc(m.url)}" ${m.kind === "file" ? `download="${esc(m.name)}"` : 'target="_blank" rel="noopener"'}>${esc(m.name)}</a></div>`).join("")}</div>` : ""}
+    <div class="row no-print" style="margin-top:14px"><button class="like ${liked ? "on" : ""}" id="vLike" type="button">👍 도움 돼요 ${(x.likes || []).length || ""}</button><span class="avs">${(x.contributors || []).map((n) => App.avatar(n)).join("")}</span><span class="muted" style="font-size:12px">함께 쓴 선생님: ${(x.contributors || []).map(esc).join(", ")}</span></div>`;
+}
+$("vBody").addEventListener("click", async (e) => {
+  if (e.target.id !== "vLike" || !App.need()) return;
+  const x = items.find((i) => i.id === viewing), l = new Set(x.likes || []);
+  l.has(App.me.name) ? l.delete(App.me.name) : l.add(App.me.name);
+  await Store.update("lesson_plans", x.id, { likes: [...l] }); load();
+});
+$("vEdit").onclick = () => openEdit(items.find((i) => i.id === viewing));
+$("vCopy").onclick = () => openEdit(items.find((i) => i.id === viewing), true);
+$("vPrint").onclick = () => window.print();
+$("vClose").onclick = () => $("viewDialog").close();
+$("viewDialog").addEventListener("close", () => { viewing = null; });
+
+Store.subscribe("lesson_plans", load);
+render(); load();
+</script>
+</body>
+</html>
