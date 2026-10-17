@@ -121,8 +121,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="../shared/config.js"></script>
 <script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
 <script>
-const GROUPS = ["전체", "1학년", "2학년", "3학년", "교무부", "연구부", "학생부", "정보부", "행정실"];
+const GROUPS = ["전체", ...SCHOOL.depts.map((d) => d.name)];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (iso) => {
@@ -139,7 +140,7 @@ $("tabs").innerHTML = GROUPS.map((g) => `<button type="button" data-g="${g}">${g
 
 function askMe() {
   $("meName").value = me?.name || "";
-  $("meGroup").value = me?.group || GROUPS[1];
+  $("meGroup").value = GROUPS.includes(me?.group) ? me.group : GROUPS[1];
   $("meDialog").showModal();
 }
 $("meForm").addEventListener("submit", () => {
@@ -263,7 +264,7 @@ Store.subscribe("notices", load);
 Store.subscribe("notice_reads", load);
 paintMe();
 load();
-if (!me) askMe();
+if (!me || !GROUPS.includes(me.group)) askMe();
 </script>
 </body>
 </html>

@@ -7,7 +7,7 @@
 | 1. 공지·업무 전달 게시판 | `notice/` |
 | 2. 학사 일정 캘린더 | `calendar/` |
 
-- `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`)
+- `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`), 부서 목록·색(`school.js`)
 - `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL
 
 `shared/config.js`가 비어 있으면 체험 모드(이 브라우저에만 저장)로 동작해요.

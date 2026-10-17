@@ -140,17 +140,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="../shared/config.js"></script>
 <script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
 <script>
-const GROUPS = ["1학년", "2학년", "3학년", "교무부", "연구부", "학생부", "정보부", "행정실"];
-const CATS = [
-  { name: "학교 전체", color: "#2f6fed" },
-  { name: "교무부", color: "#1f9d63" },
-  { name: "연구부", color: "#7c4ddb" },
-  { name: "학생부", color: "#e0761f" },
-  { name: "정보부", color: "#0f9bb0" },
-  { name: "학년", color: "#d6457d" },
-  { name: "기타", color: "#6b7487" },
-];
+const GROUPS = SCHOOL.depts.map((d) => d.name);
+const CATS = [{ name: "학교 전체", color: "#334155" }, ...SCHOOL.depts, { name: "기타", color: "#8a93a6" }];
 const colorOf = (c) => (CATS.find((x) => x.name === c) || CATS[CATS.length - 1]).color;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -167,7 +160,7 @@ if (Store.mode === "local") $("modeBanner").classList.remove("hidden");
 $("meGroup").innerHTML = GROUPS.map((g) => `<option>${g}</option>`).join("");
 $("eCat").innerHTML = CATS.map((c) => `<option>${c.name}</option>`).join("");
 
-function askMe() { $("meName").value = me?.name || ""; $("meGroup").value = me?.group || GROUPS[0]; $("meDialog").showModal(); }
+function askMe() { $("meName").value = me?.name || ""; $("meGroup").value = GROUPS.includes(me?.group) ? me.group : GROUPS[0]; $("meDialog").showModal(); }
 $("meForm").addEventListener("submit", () => { me = { name: $("meName").value.trim(), group: $("meGroup").value }; Me.set(me); paintMe(); });
 $("meChip").onclick = askMe;
 function paintMe() { $("meChip").textContent = me ? `${me.name} · ${me.group}` : "내 정보"; }
@@ -265,7 +258,7 @@ function openNew(date) {
   $("evForm").reset();
   $("evHead").textContent = "일정 추가";
   $("eStart").value = $("eEnd").value = date || ymd(new Date());
-  $("eCat").value = CATS.some((c) => c.name === me.group) ? me.group : me.group.includes("학년") ? "학년" : "학교 전체";
+  $("eCat").value = CATS.some((c) => c.name === me.group) ? me.group : "학교 전체";
   $("eBy").textContent = "";
   $("eDelete").classList.add("hidden");
   syncTime();
@@ -333,7 +326,7 @@ $("exportIcs").onclick = () => {
 
 Store.subscribe("events", load);
 paintMe(); paintLegend(); render(); load();
-if (!me) askMe();
+if (!me || !GROUPS.includes(me.group)) askMe();
 </script>
 </body>
 </html>
