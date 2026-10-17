@@ -5,6 +5,7 @@
 | 앱 | 폴더 |
 |---|---|
 | 1. 공지·업무 전달 게시판 | `notice/` |
+| 2. 학사 일정 캘린더 | `calendar/` |
 
 - `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`)
 - `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL

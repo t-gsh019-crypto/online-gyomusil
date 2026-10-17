@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학사 일정 캘린더</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231f9d63'/%3E%3Crect x='14' y='18' width='36' height='32' rx='5' fill='%23fff'/%3E%3Crect x='14' y='18' width='36' height='9' fill='%23bdeed4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #1f9d63; --accent-soft: #dcf5e9; }
+  @media (prefers-color-scheme: dark) { :root { --accent-soft: #173a2a; } }
+  .nav { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; }
+  .nav h2 { margin: 0; font-size: 20px; flex: 1; text-align: center; }
+  .nav .btn { padding: 8px 12px; }
+  .view-toggle { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .legend button {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 10px;
+    font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .legend button.off { opacity: .4; }
+  .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .dow { background: var(--surface-2); text-align: center; font-size: 12px; padding: 6px 0; color: var(--text-2); }
+  .dow:first-child, .day .num.sun { color: var(--danger); }
+  .dow:last-child, .day .num.sat { color: var(--accent); }
+  .day { background: var(--surface); min-height: 84px; padding: 4px; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+  .day.other { background: var(--bg); }
+  .day.other .num { opacity: .4; }
+  .day.today .num { background: var(--accent); color: #fff !important; border-radius: 999px; }
+  .day:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .num { font-size: 12px; width: 22px; height: 22px; line-height: 22px; text-align: center; }
+  .ev { font-size: 11px; color: #fff; border-radius: 4px; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .more { font-size: 11px; color: var(--text-2); }
+
+  .week { display: grid; gap: 8px; }
+  .wday { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: start; }
+  .wday .d { text-align: center; padding-top: 4px; }
+  .wday .d b { display: block; font-size: 22px; }
+  .wday.today .d b { color: var(--accent); }
+  .items { display: grid; gap: 6px; }
+  .item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; }
+  .item .bar { width: 4px; align-self: stretch; border-radius: 4px; flex: none; }
+  .item .t { font-weight: 600; }
+  .item .s { font-size: 13px; color: var(--text-2); }
+  .add-day { border: 1px dashed var(--border); background: transparent; color: var(--text-2); border-radius: 10px; padding: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+
+  .fab { position: fixed; right: max(16px, calc(50vw - 364px)); bottom: 20px; border-radius: 999px; padding: 14px 20px; box-shadow: 0 6px 20px rgba(31, 157, 99, .35); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .check { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--text); font-size: 15px; }
+  .check input { width: auto; }
+  @media (max-width: 480px) { .day { min-height: 64px; } .ev { font-size: 10px; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <svg class="app-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="16" fill="#1f9d63"/>
+      <rect x="13" y="17" width="38" height="34" rx="6" fill="#fff"/>
+      <rect x="13" y="17" width="38" height="10" rx="6" fill="#bdeed4"/>
+      <rect x="13" y="22" width="38" height="5" fill="#bdeed4"/>
+      <rect x="21" y="12" width="4" height="10" rx="2" fill="#fff"/>
+      <rect x="39" y="12" width="4" height="10" rx="2" fill="#fff"/>
+      <rect x="19" y="32" width="7" height="6" rx="1.5" fill="#1f9d63"/>
+      <rect x="29" y="32" width="7" height="6" rx="1.5" fill="#cfe9dc"/>
+      <rect x="39" y="32" width="7" height="6" rx="1.5" fill="#cfe9dc"/>
+      <rect x="19" y="41" width="7" height="6" rx="1.5" fill="#cfe9dc"/>
+      <rect x="29" y="41" width="7" height="6" rx="1.5" fill="#f2a33a"/>
+    </svg>
+    <h1>학사 일정</h1>
+    <button class="me-chip" id="meChip" type="button">내 정보</button>
+    <a class="home-link" href="../">← 메인</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <div class="nav">
+    <button class="btn ghost" id="prev" type="button" aria-label="이전">‹</button>
+    <h2 id="title"></h2>
+    <button class="btn ghost" id="next" type="button" aria-label="다음">›</button>
+  </div>
+  <div class="view-toggle">
+    <button class="btn small" id="vMonth" type="button">월간</button>
+    <button class="btn small ghost" id="vWeek" type="button">주간</button>
+    <button class="btn small ghost" id="goToday" type="button">오늘</button>
+    <button class="btn small ghost" id="exportIcs" type="button" title="구글 캘린더에서 가져오기로 불러올 수 있어요">⤓ 구글 캘린더로 내보내기</button>
+  </div>
+  <div class="legend" id="legend"></div>
+  <section id="view"></section>
+</main>
+
+<button class="btn fab" id="addBtn" type="button">＋ 일정 추가</button>
+
+<dialog id="meDialog">
+  <form method="dialog" id="meForm">
+    <h2>선생님 정보</h2>
+    <p class="muted">누가 일정을 올렸는지 표시하는 데 써요.</p>
+    <label for="meName">이름</label>
+    <input id="meName" required maxlength="20" placeholder="예: 김민지">
+    <label for="meGroup">소속</label>
+    <select id="meGroup"></select>
+    <div class="actions"><button class="btn" value="ok">저장</button></div>
+  </form>
+</dialog>
+
+<dialog id="evDialog">
+  <form method="dialog" id="evForm">
+    <h2 id="evHead">일정 추가</h2>
+    <label for="eTitle">제목</label>
+    <input id="eTitle" required maxlength="60" placeholder="예: 2학기 중간고사">
+    <label for="eCat">구분</label>
+    <select id="eCat"></select>
+    <div class="two">
+      <div><label for="eStart">시작일</label><input id="eStart" type="date" required></div>
+      <div><label for="eEnd">종료일</label><input id="eEnd" type="date" required></div>
+    </div>
+    <label class="check"><input type="checkbox" id="eAllDay" checked> 하루 종일</label>
+    <div class="two" id="timeRow">
+      <div><label for="eFrom">시작 시각</label><input id="eFrom" type="time"></div>
+      <div><label for="eTo">끝 시각</label><input id="eTo" type="time"></div>
+    </div>
+    <label for="ePlace">장소 (선택)</label>
+    <input id="ePlace" maxlength="40">
+    <label for="eMemo">메모 (선택)</label>
+    <textarea id="eMemo" style="min-height:70px"></textarea>
+    <p class="muted" id="eBy"></p>
+    <div class="actions">
+      <button class="btn ghost hidden" id="eDelete" type="button" style="color:var(--danger)">삭제</button>
+      <button class="btn ghost" value="cancel" formnovalidate>취소</button>
+      <button class="btn" value="ok">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script>
+const GROUPS = ["1학년", "2학년", "3학년", "교무부", "연구부", "학생부", "정보부", "행정실"];
+const CATS = [
+  { name: "학교 전체", color: "#2f6fed" },
+  { name: "교무부", color: "#1f9d63" },
+  { name: "연구부", color: "#7c4ddb" },
+  { name: "학생부", color: "#e0761f" },
+  { name: "정보부", color: "#0f9bb0" },
+  { name: "학년", color: "#d6457d" },
+  { name: "기타", color: "#6b7487" },
+];
+const colorOf = (c) => (CATS.find((x) => x.name === c) || CATS[CATS.length - 1]).color;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+let events = [], me = Me.get(), view = "month", cursor = new Date(), hidden = new Set(), editing = null;
+try { hidden = new Set(JSON.parse(localStorage.getItem("gyomusil:cal-hidden") || "[]")); } catch {}
+
+if (Store.mode === "local") $("modeBanner").classList.remove("hidden");
+$("meGroup").innerHTML = GROUPS.map((g) => `<option>${g}</option>`).join("");
+$("eCat").innerHTML = CATS.map((c) => `<option>${c.name}</option>`).join("");
+
+function askMe() { $("meName").value = me?.name || ""; $("meGroup").value = me?.group || GROUPS[0]; $("meDialog").showModal(); }
+$("meForm").addEventListener("submit", () => { me = { name: $("meName").value.trim(), group: $("meGroup").value }; Me.set(me); paintMe(); });
+$("meChip").onclick = askMe;
+function paintMe() { $("meChip").textContent = me ? `${me.name} · ${me.group}` : "내 정보"; }
+
+function paintLegend() {
+  $("legend").innerHTML = CATS.map((c) => `<button type="button" data-c="${c.name}" class="${hidden.has(c.name) ? "off" : ""}"><span class="sw" style="background:${c.color}"></span>${c.name}</button>`).join("");
+}
+$("legend").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  hidden.has(b.dataset.c) ? hidden.delete(b.dataset.c) : hidden.add(b.dataset.c);
+  try { localStorage.setItem("gyomusil:cal-hidden", JSON.stringify([...hidden])); } catch {}
+  paintLegend(); render();
+};
+
+const visible = () => events.filter((e) => !hidden.has(e.category));
+const onDay = (key) => visible()
+  .filter((e) => e.start_date <= key && key <= e.end_date)
+  .sort((a, b) => (a.all_day === b.all_day ? (a.start_time || "").localeCompare(b.start_time || "") : a.all_day ? -1 : 1));
+const timeText = (e) => (e.all_day ? "하루 종일" : `${e.start_time || ""}${e.end_time ? "–" + e.end_time : ""}`);
+
+async function load() {
+  try { events = await Store.list("events"); }
+  catch (err) { $("view").innerHTML = `<div class="card">불러오지 못했어요: ${esc(err.message)}</div>`; return; }
+  render();
+}
+
+function render() {
+  $("vMonth").classList.toggle("ghost", view !== "month");
+  $("vWeek").classList.toggle("ghost", view !== "week");
+  view === "month" ? renderMonth() : renderWeek();
+}
+
+function renderMonth() {
+  const y = cursor.getFullYear(), m = cursor.getMonth();
+  $("title").textContent = `${y}년 ${m + 1}월`;
+  const first = new Date(y, m, 1);
+  const start = addDays(first, -first.getDay());
+  const today = ymd(new Date());
+  let html = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i), key = ymd(d);
+    if (i >= 35 && d.getMonth() !== m) break;
+    const list = onDay(key);
+    const cls = d.getDay() === 0 ? "sun" : d.getDay() === 6 ? "sat" : "";
+    html += `<div class="day ${d.getMonth() !== m ? "other" : ""} ${key === today ? "today" : ""}" data-date="${key}">
+      <div class="num ${cls}">${d.getDate()}</div>
+      ${list.slice(0, 3).map((e) => `<div class="ev" style="background:${colorOf(e.category)}" data-id="${e.id}">${esc(e.title)}</div>`).join("")}
+      ${list.length > 3 ? `<div class="more">+${list.length - 3}개 더</div>` : ""}
+    </div>`;
+  }
+  $("view").innerHTML = `<div class="month">${html}</div>`;
+}
+
+function renderWeek() {
+  const s = addDays(cursor, -cursor.getDay());
+  const e = addDays(s, 6);
+  $("title").textContent = `${s.getMonth() + 1}/${s.getDate()} – ${e.getMonth() + 1}/${e.getDate()}`;
+  const today = ymd(new Date());
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(s, i), key = ymd(d);
+    const items = onDay(key).map((ev) => `<div class="card item" data-id="${ev.id}">
+        <span class="bar" style="background:${colorOf(ev.category)}"></span>
+        <div><div class="t">${esc(ev.title)}</div><div class="s">${timeText(ev)} · ${esc(ev.category)}${ev.place ? " · " + esc(ev.place) : ""}</div></div>
+      </div>`).join("");
+    html += `<div class="wday ${key === today ? "today" : ""}">
+      <div class="d muted">${DOW[d.getDay()]}<b>${d.getDate()}</b></div>
+      <div class="items">${items}<button class="add-day" type="button" data-date="${key}">＋ 이 날 일정 추가</button></div>
+    </div>`;
+  }
+  $("view").innerHTML = `<div class="week">${html}</div>`;
+}
+
+$("view").onclick = (e) => {
+  const ev = e.target.closest("[data-id]");
+  if (ev) return openEdit(events.find((x) => x.id === ev.dataset.id));
+  const day = e.target.closest("[data-date]");
+  if (!day) return;
+  if (view === "month" && !e.target.closest(".add-day")) { cursor = parse(day.dataset.date); view = "week"; return render(); }
+  openNew(day.dataset.date);
+};
+$("prev").onclick = () => { cursor = view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1) : addDays(cursor, -7); render(); };
+$("next").onclick = () => { cursor = view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1) : addDays(cursor, 7); render(); };
+$("vMonth").onclick = () => { view = "month"; render(); };
+$("vWeek").onclick = () => { view = "week"; render(); };
+$("goToday").onclick = () => { cursor = new Date(); render(); };
+
+function syncTime() { $("timeRow").classList.toggle("hidden", $("eAllDay").checked); }
+$("eAllDay").onchange = syncTime;
+$("eStart").onchange = () => { if ($("eEnd").value < $("eStart").value) $("eEnd").value = $("eStart").value; };
+
+function openNew(date) {
+  if (!me) return askMe();
+  editing = null;
+  $("evForm").reset();
+  $("evHead").textContent = "일정 추가";
+  $("eStart").value = $("eEnd").value = date || ymd(new Date());
+  $("eCat").value = CATS.some((c) => c.name === me.group) ? me.group : me.group.includes("학년") ? "학년" : "학교 전체";
+  $("eBy").textContent = "";
+  $("eDelete").classList.add("hidden");
+  syncTime();
+  $("evDialog").showModal();
+}
+function openEdit(ev) {
+  if (!ev) return;
+  editing = ev;
+  $("evHead").textContent = "일정 보기·수정";
+  $("eTitle").value = ev.title; $("eCat").value = ev.category;
+  $("eStart").value = ev.start_date; $("eEnd").value = ev.end_date;
+  $("eAllDay").checked = ev.all_day; $("eFrom").value = ev.start_time || ""; $("eTo").value = ev.end_time || "";
+  $("ePlace").value = ev.place || ""; $("eMemo").value = ev.memo || "";
+  $("eBy").textContent = `올린 사람: ${ev.author}`;
+  $("eDelete").classList.remove("hidden");
+  syncTime();
+  $("evDialog").showModal();
+}
+$("addBtn").onclick = () => openNew(view === "week" ? ymd(cursor) : null);
+
+$("evForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  if (!me) return askMe();
+  const allDay = $("eAllDay").checked;
+  const row = {
+    title: $("eTitle").value.trim(), category: $("eCat").value,
+    start_date: $("eStart").value, end_date: $("eEnd").value < $("eStart").value ? $("eStart").value : $("eEnd").value,
+    all_day: allDay, start_time: allDay ? null : $("eFrom").value || null, end_time: allDay ? null : $("eTo").value || null,
+    place: $("ePlace").value.trim() || null, memo: $("eMemo").value.trim() || null,
+  };
+  if (editing) await Store.update("events", editing.id, row);
+  else await Store.insert("events", { ...row, author: me.name });
+  load();
+});
+$("eDelete").onclick = async () => {
+  const id = editing.id;
+  $("evDialog").close();
+  await Store.remove("events", id);
+  load();
+};
+
+// 구글 캘린더 등에서 "가져오기"로 불러올 수 있는 .ics 파일 만들기
+$("exportIcs").onclick = () => {
+  const icsEsc = (s) => String(s || "").replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
+  const d8 = (s) => s.replace(/-/g, "");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//online-gyomusil//KO", "CALSCALE:GREGORIAN"];
+  for (const e of visible()) {
+    lines.push("BEGIN:VEVENT", `UID:${e.id}@online-gyomusil`, `SUMMARY:${icsEsc(`[${e.category}] ${e.title}`)}`);
+    if (e.all_day || !e.start_time) {
+      lines.push(`DTSTART;VALUE=DATE:${d8(e.start_date)}`, `DTEND;VALUE=DATE:${d8(ymd(addDays(parse(e.end_date), 1)))}`);
+    } else {
+      lines.push(`DTSTART;TZID=Asia/Seoul:${d8(e.start_date)}T${e.start_time.replace(":", "")}00`,
+        `DTEND;TZID=Asia/Seoul:${d8(e.end_date)}T${(e.end_time || e.start_time).replace(":", "")}00`);
+    }
+    if (e.place) lines.push(`LOCATION:${icsEsc(e.place)}`);
+    if (e.memo) lines.push(`DESCRIPTION:${icsEsc(e.memo)}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar" }));
+  a.download = "학사일정.ics";
+  a.click();
+};
+
+Store.subscribe("events", load);
+paintMe(); paintLegend(); render(); load();
+if (!me) askMe();
+</script>
+</body>
+</html>
