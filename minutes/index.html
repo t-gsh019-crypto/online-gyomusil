@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회의록·협의록</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #b45309; --accent-2: #f59e0b; }
+  .toolbar { display: flex; gap: 8px; margin: 6px 0 4px; }
+  .list { display: grid; gap: 10px; }
+  .month { font-size: 13px; font-weight: 800; color: var(--text-2); margin: 16px 2px 8px; }
+  .mt { cursor: pointer; display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; padding: 14px 16px; }
+  .date { text-align: center; border-radius: 16px; padding: 8px 0; background: var(--accent-soft); color: var(--accent); }
+  .date b { display: block; font-size: 22px; line-height: 1; }
+  .date span { font-size: 11px; font-weight: 700; }
+  .mt h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .mt .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--text-2); }
+  .sig { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, #f5a524 18%, transparent); color: #b45309; }
+  .sig.all { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .doc { font-size: 15px; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  .doc th, .doc td { border: 1px solid var(--border); padding: 9px 10px; text-align: left; vertical-align: top; }
+  .doc th { width: 90px; background: var(--surface-2); font-size: 13px; color: var(--text-2); white-space: nowrap; }
+  .doc td { white-space: pre-wrap; }
+  .doc h2 { text-align: center; }
+  .signs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sign { display: grid; justify-items: center; gap: 2px; padding: 10px 12px; border-radius: 14px; border: 1.5px dashed var(--border); min-width: 82px; font-size: 13px; }
+  .sign.ok { border-style: solid; border-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+  .sign .stamp { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e5484d; color: #e5484d; display: grid; place-items: center; font-size: 11px; font-weight: 800; transform: rotate(-12deg); }
+  .sign small { color: var(--text-2); font-size: 11px; }
+  .todo { display: flex; gap: 8px; align-items: center; padding: 6px 0; }
+  .todo input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .todo.done span { text-decoration: line-through; color: var(--text-2); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow: auto; }
+  .pick label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 13px; cursor: pointer; }
+  .pick label:has(input:checked) { background: var(--accent); color: #fff; }
+  .pick input { display: none; }
+  .todo-edit { display: grid; grid-template-columns: 1fr 120px auto; gap: 6px; margin-top: 6px; }
+  .x { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 18px; }
+  @media (min-width: 561px) { #editDialog { width: min(720px, calc(100vw - 24px)); } #viewDialog { width: min(760px, calc(100vw - 24px)); } }
+  @media print {
+    body > *:not(#viewDialog) { display: none !important; }
+    #viewDialog { position: static; box-shadow: none; border: 0; width: 100%; max-height: none; }
+    #viewDialog .actions, #viewDialog .no-print { display: none !important; }
+    dialog::backdrop { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="minutes"></span><h1>회의록·협의록</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">📝 MINUTES</span>
+    <h2>양식대로 쓰고 <span class="grad">함께 확인</span></h2>
+    <p>협의회 양식에 맞춰 기록하고, 참석자는 눌러서 확인 서명해요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sNeed">0</b><span>내 서명 필요</span></div>
+      <div class="stat"><b id="sMonth">0</b><span>이번 달 회의</span></div>
+      <div class="stat"><b id="sTodo">0</b><span>남은 후속 할 일</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="types"></nav>
+  <div class="toolbar"><input id="q" type="search" placeholder="제목·내용·참석자 검색" aria-label="검색"></div>
+  <section id="list"></section>
+</main>
+<button class="btn fab" id="newBtn" type="button">＋ 회의록 쓰기</button>
+
+<dialog id="editDialog"><form method="dialog" id="editForm">
+  <h2 id="eHead">회의록 쓰기</h2>
+  <div class="two">
+    <div><label for="eType">회의 종류</label><select id="eType"></select></div>
+    <div><label for="eDept">주관</label><select id="eDept"></select></div>
+  </div>
+  <label for="eTitle">회의 제목</label><input id="eTitle" required maxlength="80">
+  <div class="three">
+    <div><label for="eDate">날짜</label><input id="eDate" type="date" required></div>
+    <div><label for="eTime">시간</label><input id="eTime" type="time"></div>
+    <div><label for="ePlace">장소</label><input id="ePlace" maxlength="30" placeholder="예: 2학년 교무실"></div>
+  </div>
+  <label>참석자</label><div class="pick" id="ePick"></div>
+  <input id="eExtra" style="margin-top:6px" placeholder="명단에 없는 참석자 (쉼표로 구분)">
+  <label for="eAgenda">안건</label><textarea id="eAgenda" style="min-height:70px"></textarea>
+  <label for="eDisc">협의 내용</label><textarea id="eDisc" style="min-height:120px"></textarea>
+  <label for="eDecide">결정 사항</label><textarea id="eDecide" style="min-height:70px"></textarea>
+  <label>후속 할 일</label><div id="eTodos"></div>
+  <button class="btn small ghost" id="addTodo" type="button" style="margin-top:6px">＋ 할 일 추가</button>
+  <div class="actions"><button class="btn danger hidden" id="eDel" type="button">삭제</button><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<dialog id="viewDialog">
+  <div class="doc" id="doc"></div>
+  <div class="no-print" id="signBtnBox" style="margin-top:10px"></div>
+  <div class="actions"><button class="btn ghost" id="vPrint" type="button">🖨 인쇄</button><button class="btn ghost hidden" id="vEdit" type="button">수정</button><button class="btn" id="vClose" type="button">닫기</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, fmt, ymd, parse, DOW } = U;
+const TYPES = [
+  ["학년 협의회", "1. 학년 행사 운영\n2. 학생 생활 지도\n3. 기타"],
+  ["교과 협의회", "1. 평가 계획 및 기준 협의\n2. 수업 진도·자료 공유\n3. 기타"],
+  ["부서 회의", "1. 이번 달 주요 업무\n2. 업무 분담\n3. 기타"],
+  ["교직원 회의", "1. 학사 일정 안내\n2. 부서별 전달 사항\n3. 기타"],
+  ["기타", ""],
+];
+let mins = [], type = "전체", editing = null, viewing = null, todos = [], autoTitle = "";
+
+App.init({ onMe: render });
+window.addEventListener("roster", () => { if ($("editDialog").open) paintPick(currentPicked()); });
+$("types").innerHTML = ["전체", ...TYPES.map((t) => t[0])].map((t) => `<button type="button" data-t="${t}">${t}</button>`).join("");
+$("eType").innerHTML = TYPES.map((t) => `<option>${t[0]}</option>`).join("");
+$("eDept").innerHTML = U.GROUPS.map((g) => `<option>${g}</option>`).join("");
+
+const signed = (m) => Object.keys(m.signatures || {});
+const needMine = (m) => App.me && (m.attendees || []).includes(App.me.name) && !(m.signatures || {})[App.me.name];
+
+async function load() {
+  try { mins = await Store.list("minutes"); } catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  mins.forEach((m) => ["attendees", "signatures", "todos"].forEach((k) => { if (typeof m[k] === "string") m[k] = JSON.parse(m[k]); }));
+  render();
+  if (viewing) paintView(viewing);
+}
+
+function render() {
+  [...$("types").children].forEach((b) => b.classList.toggle("on", b.dataset.t === type));
+  const mk = ymd(new Date()).slice(0, 7);
+  $("sNeed").textContent = mins.filter(needMine).length;
+  $("sMonth").textContent = mins.filter((m) => m.date.slice(0, 7) === mk).length;
+  $("sTodo").textContent = mins.reduce((n, m) => n + (m.todos || []).filter((t) => !t.done).length, 0);
+  const q = $("q").value.trim();
+  const rows = mins.filter((m) => type === "전체" || m.type === type)
+    .filter((m) => !q || [m.title, m.agenda, m.discussion, m.decisions, (m.attendees || []).join(" ")].join(" ").includes(q))
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.time || "").localeCompare(a.time || ""));
+  let lastM = "", html = "";
+  rows.forEach((m, i) => {
+    const mm = m.date.slice(0, 7);
+    if (mm !== lastM) { if (lastM) html += "</div>"; html += `<div class="month">${+mm.slice(0, 4)}년 ${+mm.slice(5)}월</div><div class="list">`; lastM = mm; }
+    const d = parse(m.date), s = signed(m).length, n = (m.attendees || []).length;
+    html += `<article class="card lift mt rise" style="animation-delay:${Math.min(i, 10) * 30}ms" data-id="${m.id}">
+      <div class="date"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}요일</span></div>
+      <div><h3>${esc(m.title)}</h3><div class="meta"><span class="chip accent">${esc(m.type)}</span><span>${esc(m.dept || "")}</span><span>참석 ${n}명</span>
+        <span class="sig ${s >= n && n ? "all" : ""}">${s >= n && n ? "✓ 모두 확인" : `확인 ${s}/${n}`}</span>${needMine(m) ? '<span class="sig" style="background:var(--danger);color:#fff">내 서명 필요</span>' : ""}</div></div></article>`;
+  });
+  $("list").innerHTML = rows.length ? html + "</div>" : App.empty("아직 회의록이 없어요", "오른쪽 아래 버튼으로 양식에 맞춰 써 보세요.", "📝");
+}
+$("types").onclick = (e) => { const b = e.target.closest("button"); if (b) { type = b.dataset.t; render(); } };
+$("q").oninput = render;
+$("list").onclick = (e) => { const c = e.target.closest(".mt"); if (c) openView(c.dataset.id); };
+
+/* 쓰기 */
+const currentPicked = () => [...$("ePick").querySelectorAll("input:checked")].map((x) => x.value);
+function paintPick(sel) {
+  $("ePick").innerHTML = App.roster.map((t) => `<label><input type="checkbox" value="${esc(t.name)}" ${sel.includes(t.name) ? "checked" : ""}>${esc(t.name)}</label>`).join("");
+}
+function paintTodos() {
+  $("eTodos").innerHTML = todos.map((t, i) => `<div class="todo-edit"><input data-i="${i}" data-f="text" value="${esc(t.text)}" placeholder="할 일"><input data-i="${i}" data-f="owner" value="${esc(t.owner || "")}" placeholder="담당" list="ownerList"><button type="button" class="x" data-rm="${i}">✕</button></div>`).join("")
+    + `<datalist id="ownerList">${App.roster.map((t) => `<option value="${esc(t.name)}">`).join("")}</datalist>`;
+}
+$("eTodos").addEventListener("input", (e) => { const t = e.target; if (t.dataset.f) todos[+t.dataset.i][t.dataset.f] = t.value; });
+$("eTodos").addEventListener("click", (e) => { if (e.target.dataset.rm) { todos.splice(+e.target.dataset.rm, 1); paintTodos(); } });
+$("addTodo").onclick = () => { todos.push({ text: "", owner: "", done: false }); paintTodos(); };
+$("eType").onchange = () => {
+  const t = TYPES.find((x) => x[0] === $("eType").value);
+  if (!editing && (!$("eAgenda").value || TYPES.some((x) => x[1] === $("eAgenda").value))) $("eAgenda").value = t[1];
+  if (!editing && (!$("eTitle").value || $("eTitle").value === autoTitle)) $("eTitle").value = autoTitle = `${$("eDept").value} ${t[0]}`;
+};
+function openEdit(m) {
+  if (!App.need()) return;
+  editing = m || null;
+  $("editForm").reset();
+  $("eHead").textContent = m ? "회의록 수정" : "회의록 쓰기";
+  $("eType").value = m?.type || (App.me.group.includes("학년") ? "학년 협의회" : "부서 회의");
+  $("eDept").value = m?.dept || App.me.group;
+  $("eDate").value = m?.date || ymd(new Date());
+  const roster = App.roster.map((t) => t.name);
+  const att = m?.attendees || [App.me.name];
+  paintPick(att);
+  $("eExtra").value = att.filter((a) => !roster.includes(a)).join(", ");
+  if (m) { $("eTitle").value = m.title; $("eTime").value = m.time || ""; $("ePlace").value = m.place || ""; $("eAgenda").value = m.agenda || ""; $("eDisc").value = m.discussion || ""; $("eDecide").value = m.decisions || ""; }
+  else { $("eTitle").value = ""; $("eAgenda").value = ""; $("eType").onchange(); }
+  todos = (m?.todos || []).map((t) => ({ ...t }));
+  paintTodos();
+  $("eDel").classList.toggle("hidden", !(m && m.author === App.me.name));
+  $("editDialog").showModal();
+}
+$("eDept").addEventListener("change", () => $("eType").onchange());
+$("newBtn").onclick = () => openEdit();
+$("editForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const attendees = [...new Set([...currentPicked(), ...$("eExtra").value.split(",").map((x) => x.trim()).filter(Boolean)])];
+  const row = { type: $("eType").value, dept: $("eDept").value, title: $("eTitle").value.trim(), date: $("eDate").value, time: $("eTime").value || null, place: $("ePlace").value.trim() || null,
+    attendees, agenda: $("eAgenda").value.trim(), discussion: $("eDisc").value.trim(), decisions: $("eDecide").value.trim(), todos: todos.filter((t) => t.text.trim()),
+    updated_at: new Date().toISOString(), updated_by: App.me.name };
+  if (editing) {
+    // 참석자에서 빠진 사람의 서명은 지움
+    const signatures = Object.fromEntries(Object.entries(editing.signatures || {}).filter(([n]) => attendees.includes(n)));
+    await Store.update("minutes", editing.id, { ...row, signatures });
+  } else await Store.insert("minutes", { ...row, signatures: {}, author: App.me.name });
+  App.toast("저장했어요"); load();
+});
+$("eDel").onclick = async () => {
+  if (!(await App.confirm("이 회의록을 삭제할까요?", "삭제"))) return;
+  $("editDialog").close(); $("viewDialog").close(); await Store.remove("minutes", editing.id); load();
+};
+
+/* 보기·서명 */
+function openView(id) { viewing = id; paintView(id); $("viewDialog").showModal(); }
+function paintView(id) {
+  const m = mins.find((x) => x.id === id); if (!m) return;
+  const d = parse(m.date), sg = m.signatures || {};
+  $("doc").innerHTML = `<h2>${esc(m.title)}</h2>
+    <table>
+      <tr><th>회의 종류</th><td>${esc(m.type)} · ${esc(m.dept || "")}</td></tr>
+      <tr><th>일시</th><td>${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.(${DOW[d.getDay()]}) ${esc(m.time || "")}</td></tr>
+      <tr><th>장소</th><td>${esc(m.place || "")}</td></tr>
+      <tr><th>참석자</th><td>${(m.attendees || []).map(esc).join(", ")} (${(m.attendees || []).length}명)</td></tr>
+      <tr><th>안건</th><td>${esc(m.agenda)}</td></tr>
+      <tr><th>협의 내용</th><td>${esc(m.discussion)}</td></tr>
+      <tr><th>결정 사항</th><td>${esc(m.decisions)}</td></tr>
+      ${(m.todos || []).length ? `<tr><th>후속 할 일</th><td style="white-space:normal">${m.todos.map((t, i) => `<label class="todo ${t.done ? "done" : ""}" style="margin:0"><input type="checkbox" data-todo="${i}" ${t.done ? "checked" : ""}><span>${esc(t.text)}${t.owner ? ` <b>(${esc(t.owner)})</b>` : ""}</span></label>`).join("")}</td></tr>` : ""}
+    </table>
+    <h4 style="margin:16px 0 8px">참석자 확인</h4>
+    <div class="signs">${(m.attendees || []).map((n) => sg[n] ? `<div class="sign ok"><span class="stamp">${esc(n.slice(-2))}</span><b>${esc(n)}</b><small>${fmt(sg[n])}</small></div>` : `<div class="sign"><span style="font-size:22px">⏳</span><b>${esc(n)}</b><small>확인 전</small></div>`).join("")}</div>
+    <p class="muted" style="font-size:12px;margin-top:12px">작성 ${esc(m.author)} · ${fmt(m.created_at)}${m.updated_by ? ` · 마지막 수정 ${esc(m.updated_by)} ${fmt(m.updated_at)}` : ""}</p>`;
+  $("signBtnBox").innerHTML = needMine(m) ? `<button class="btn" id="signBtn" type="button" style="width:100%">✍️ 내용을 확인했어요 (서명)</button>` : "";
+  const canEdit = App.me && (m.author === App.me.name || (m.attendees || []).includes(App.me.name));
+  $("vEdit").classList.toggle("hidden", !canEdit);
+}
+$("viewDialog").addEventListener("click", async (e) => {
+  const m = mins.find((x) => x.id === viewing); if (!m) return;
+  if (e.target.id === "signBtn") {
+    await Store.update("minutes", m.id, { signatures: { ...(m.signatures || {}), [App.me.name]: new Date().toISOString() } });
+    App.toast("확인 서명했어요 ✍️"); load();
+  }
+  const td = e.target.closest("[data-todo]");
+  if (td) { const t = m.todos.map((x, i) => (i === +td.dataset.todo ? { ...x, done: td.checked } : x)); await Store.update("minutes", m.id, { todos: t }); load(); }
+});
+$("vPrint").onclick = () => window.print();
+$("vEdit").onclick = () => openEdit(mins.find((m) => m.id === viewing));
+$("vClose").onclick = () => $("viewDialog").close();
+$("viewDialog").addEventListener("close", () => { viewing = null; });
+
+Store.subscribe("minutes", load);
+render(); load();
+</script>
+</body>
+</html>
