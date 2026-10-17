@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설문·회신</title>
+<link rel="stylesheet" href="../shared/common.css">
+<style>
+  :root { --accent: #14b8a6; --accent-2: #06b6d4; }
+  .list { display: grid; gap: 12px; }
+  .sv { cursor: pointer; display: grid; gap: 10px; }
+  .sv h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+  .sv .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dd { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .dd.urgent { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .dd.closed { background: var(--surface-2); color: var(--text-2); }
+  .mine { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .mine.done { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .mine.todo { background: color-mix(in srgb, #f5a524 18%, transparent); color: #b45309; }
+  .prog { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-2); }
+  .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--grad); border-radius: 99px; transition: width .6s var(--ease); }
+  .q { padding: 14px; border-radius: 16px; background: var(--surface-2); margin-top: 10px; }
+  .q .ql { font-weight: 700; margin-bottom: 8px; }
+  .opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-solid); margin-top: 6px; cursor: pointer; border: 1.5px solid transparent; font-weight: 500; }
+  .opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .opt input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .builder .bq { padding: 12px; border-radius: 14px; background: var(--surface-2); margin-top: 10px; display: grid; gap: 8px; }
+  .bq .row input { flex: 1; }
+  .bq .type { font-size: 12px; font-weight: 800; color: var(--accent); }
+  .add-q { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tpl { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 6px; }
+  .res-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; margin-top: 8px; font-size: 14px; }
+  .res-row .bar { grid-column: 1 / -1; height: 10px; }
+  .who-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .texts { display: grid; gap: 6px; margin-top: 6px; }
+  .texts div { background: var(--surface-solid); padding: 8px 10px; border-radius: 10px; font-size: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .x { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 18px; padding: 0 4px; }
+  .x:hover { color: var(--danger); }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <span data-app-icon="survey"></span><h1>설문·회신</h1>
+  <button class="me-chip" id="meChip" type="button">내 정보</button><a class="home-link" href="../">← 메인</a>
+</div></header>
+
+<main class="wrap">
+  <div class="banner hidden" id="modeBanner">⚠️ 체험 모드예요. 지금은 이 기기에만 저장돼요.</div>
+  <section class="hero">
+    <span class="eyebrow">🗳 SURVEY</span>
+    <h2>빠르게 묻고 <span class="grad">한눈에 취합</span></h2>
+    <p>참석 여부·희망 조사를 보내고, 아직 안 한 선생님을 바로 확인해요.</p>
+    <div class="stats">
+      <div class="stat"><b id="sTodo">0</b><span>내가 응답할 설문</span></div>
+      <div class="stat"><b id="sOpen">0</b><span>진행 중</span></div>
+      <div class="stat"><b id="sMine">0</b><span>내가 만든 설문</span></div>
+    </div>
+  </section>
+  <nav class="pills" id="tabs">
+    <button type="button" data-t="open" class="on">🟢 진행 중</button>
+    <button type="button" data-t="todo">📝 내가 응답할 것</button>
+    <button type="button" data-t="mine">🙋 내가 만든 설문</button>
+    <button type="button" data-t="closed">🔒 마감</button>
+  </nav>
+  <section class="list" id="list"></section>
+</main>
+<button class="btn fab" id="newBtn" type="button">＋ 설문 만들기</button>
+
+<dialog id="buildDialog"><form method="dialog" id="buildForm" class="builder">
+  <h2>설문 만들기</h2>
+  <p class="muted" style="margin:0">빠른 시작</p>
+  <div class="tpl" id="tpl">
+    <button type="button" class="btn small ghost" data-tpl="meet">📅 회의 참석 조사</button>
+    <button type="button" class="btn small ghost" data-tpl="hope">🙋 희망 조사</button>
+    <button type="button" class="btn small ghost" data-tpl="opinion">💬 간단 의견</button>
+  </div>
+  <label for="bTitle">제목</label><input id="bTitle" required maxlength="80" placeholder="예: 11월 교직원 연수 참석 조사">
+  <label for="bDesc">안내 (선택)</label><textarea id="bDesc" style="min-height:60px"></textarea>
+  <div class="two">
+    <div><label for="bDeadline">마감일</label><input id="bDeadline" type="date" required></div>
+    <div><label for="bTarget">대상</label><select id="bTarget"></select></div>
+  </div>
+  <label class="check"><input type="checkbox" id="bAnon"> 익명으로 받기 (응답 여부만 보이고 답은 이름 없이)</label>
+  <div id="bQs"></div>
+  <div class="add-q">
+    <button type="button" class="btn small ghost" data-add="yesno">✅ 참석 여부</button>
+    <button type="button" class="btn small ghost" data-add="single">🔘 하나 고르기</button>
+    <button type="button" class="btn small ghost" data-add="multi">☑️ 여러 개 고르기</button>
+    <button type="button" class="btn small ghost" data-add="text">✏️ 주관식</button>
+  </div>
+  <p class="hint" id="bMsg" style="color:var(--danger);font-size:13px"></p>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">보내기</button></div>
+</form></dialog>
+
+<dialog id="answerDialog"><form method="dialog" id="answerForm">
+  <h2 id="aTitle"></h2>
+  <p class="muted" id="aDesc" style="white-space:pre-wrap"></p>
+  <div id="aQs"></div>
+  <p class="hint" id="aMsg" style="color:var(--danger);font-size:13px"></p>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button class="btn" value="ok" id="aOk">제출</button></div>
+</form></dialog>
+
+<dialog id="resultDialog">
+  <h2 id="rTitle"></h2>
+  <div class="muted" id="rMeta"></div>
+  <div class="prog" style="margin-top:12px"><span id="rCount"></span><div class="bar"><i id="rBar"></i></div></div>
+  <div id="rQs"></div>
+  <div class="q"><div class="ql">⏳ 아직 응답하지 않은 선생님 <span id="rNoCnt"></span></div><div class="who-list" id="rNo"></div>
+    <div class="row" style="margin-top:10px"><button class="btn small ghost" id="rCopy" type="button">📋 이름 복사 (독려 메시지용)</button></div></div>
+  <div class="q"><div class="ql">✅ 응답한 선생님</div><div class="who-list" id="rYes"></div></div>
+  <div class="actions">
+    <button class="btn danger hidden" id="rDel" type="button">삭제</button>
+    <button class="btn ghost hidden" id="rClose" type="button"></button>
+    <button class="btn ghost" id="rCsv" type="button">⤓ 엑셀(CSV)</button>
+    <button class="btn" id="rDone" type="button">닫기</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/store.js"></script>
+<script src="../shared/school.js"></script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+const { $, esc, fmt, ymd, addDays, md, dday } = U;
+const TYPE_NAME = { yesno: "참석 여부", single: "하나 고르기", multi: "여러 개 고르기", text: "주관식" };
+let surveys = [], resps = [], tab = "open", draft = [], answering = null, viewing = null;
+const qid = () => Math.random().toString(36).slice(2, 9);
+
+App.init({ onMe: render });
+window.addEventListener("roster", () => { render(); if (viewing) paintResult(viewing); });
+$("bTarget").innerHTML = ["전체", ...U.GROUPS].map((g) => `<option>${g}</option>`).join("");
+
+const isClosed = (s) => s.closed || s.deadline < ymd(new Date());
+const respsOf = (id) => resps.filter((r) => r.survey_id === id);
+const myResp = (s) => App.me && respsOf(s.id).find((r) => r.respondent === App.me.name);
+const targets = (s) => App.names(s.target);
+const forMe = (s) => App.me && (s.target === "전체" || s.target === App.me.group);
+
+async function load() {
+  try { [surveys, resps] = await Promise.all([Store.list("surveys"), Store.list("survey_responses")]); }
+  catch (e) { $("list").innerHTML = `<p class="muted">불러오지 못했어요: ${esc(e.message)}</p>`; return; }
+  surveys.forEach((s) => { if (typeof s.questions === "string") s.questions = JSON.parse(s.questions); });
+  resps.forEach((r) => { if (typeof r.answers === "string") r.answers = JSON.parse(r.answers); });
+  render();
+  if (viewing) paintResult(viewing);
+}
+
+function render() {
+  [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
+  const todo = surveys.filter((s) => !isClosed(s) && forMe(s) && !myResp(s));
+  $("sTodo").textContent = todo.length;
+  $("sOpen").textContent = surveys.filter((s) => !isClosed(s)).length;
+  $("sMine").textContent = surveys.filter((s) => App.me && s.author === App.me.name).length;
+  const rows = (tab === "open" ? surveys.filter((s) => !isClosed(s)) : tab === "todo" ? todo : tab === "mine" ? surveys.filter((s) => App.me && s.author === App.me.name) : surveys.filter(isClosed))
+    .sort((a, b) => tab === "closed" ? b.deadline.localeCompare(a.deadline) : a.deadline.localeCompare(b.deadline));
+  $("list").innerHTML = rows.map((s, i) => {
+    const n = respsOf(s.id).length, total = Math.max(targets(s).length, n), closed = isClosed(s);
+    const d = closed ? "마감" : dday(s.deadline);
+    const mine = myResp(s);
+    return `<article class="card lift sv rise" style="animation-delay:${Math.min(i, 8) * 40}ms" data-id="${s.id}">
+      <div class="top"><span class="dd ${closed ? "closed" : (d === "D-day" || d === "D-1") ? "urgent" : ""}">${d}</span>
+        <span class="chip accent">${esc(s.target)}</span>${s.anonymous ? '<span class="chip">익명</span>' : ""}
+        <span class="grow"></span>${forMe(s) ? `<span class="mine ${mine ? "done" : "todo"}">${mine ? "✓ 응답 완료" : "응답 전"}</span>` : ""}</div>
+      <h3>${esc(s.title)}</h3>
+      <div class="prog"><span>${n}/${total}명</span><div class="bar"><i style="width:${total ? (n / total) * 100 : 0}%"></i></div><span>~${md(s.deadline)}</span></div>
+      <div class="muted" style="font-size:13px">${esc(s.author)} · ${s.questions.length}문항</div>
+      <div class="row">${!closed && forMe(s) ? `<button class="btn small" data-act="answer" data-id="${s.id}">${mine ? "응답 수정" : "응답하기"}</button>` : ""}
+        <button class="btn small ghost" data-act="result" data-id="${s.id}">📊 결과 보기</button></div>
+    </article>`;
+  }).join("") || App.empty(tab === "todo" ? "응답할 설문이 없어요" : "설문이 없어요", tab === "todo" ? "모두 응답했어요. 수고하셨어요!" : "오른쪽 아래 버튼으로 설문을 만들어 보세요.", tab === "todo" ? "🎉" : "🗳");
+}
+$("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.t; render(); } };
+$("list").onclick = (e) => {
+  const b = e.target.closest("[data-act]");
+  const id = b?.dataset.id || e.target.closest(".sv")?.dataset.id; if (!id) return;
+  const s = surveys.find((x) => x.id === id);
+  if (b?.dataset.act === "answer" || (!b && !isClosed(s) && forMe(s) && !myResp(s))) openAnswer(s); else openResult(s);
+};
+
+/* 만들기 */
+const TPL = {
+  meet: { title: "교직원 회의 참석 조사", qs: [{ type: "yesno", label: "참석하시나요?", options: ["참석", "불참"] }, { type: "text", label: "불참 사유 (불참일 때만)", options: [] }] },
+  hope: { title: "희망 조사", qs: [{ type: "single", label: "희망하는 것을 골라 주세요", options: ["1안", "2안", "3안"] }, { type: "text", label: "기타 의견", options: [] }] },
+  opinion: { title: "의견 수렴", qs: [{ type: "text", label: "의견을 자유롭게 적어 주세요", options: [] }] },
+};
+function newQ(type) { return { id: qid(), type, label: "", options: type === "yesno" ? ["참석", "불참"] : type === "text" ? [] : ["", ""] }; }
+function paintBuilder() {
+  $("bQs").innerHTML = draft.map((q, i) => `<div class="bq" data-i="${i}">
+    <div class="row"><span class="type">${i + 1}. ${TYPE_NAME[q.type]}</span><span class="grow"></span><button type="button" class="x" data-rm="${i}" aria-label="문항 삭제">✕</button></div>
+    <input data-f="label" data-i="${i}" value="${esc(q.label)}" placeholder="질문을 적어 주세요" required>
+    ${q.type === "text" ? "" : q.options.map((o, j) => `<div class="row"><input data-f="opt" data-i="${i}" data-j="${j}" value="${esc(o)}" placeholder="보기 ${j + 1}"><button type="button" class="x" data-rmo="${i}|${j}">✕</button></div>`).join("") + `<div><button type="button" class="btn small ghost" data-addo="${i}">＋ 보기 추가</button></div>`}
+  </div>`).join("");
+}
+$("bQs").addEventListener("input", (e) => {
+  const t = e.target; if (!t.dataset.f) return;
+  const q = draft[+t.dataset.i];
+  if (t.dataset.f === "label") q.label = t.value; else q.options[+t.dataset.j] = t.value;
+});
+$("bQs").addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.dataset.rm) { draft.splice(+t.dataset.rm, 1); paintBuilder(); }
+  if (t.dataset.rmo) { const [i, j] = t.dataset.rmo.split("|").map(Number); if (draft[i].options.length > 2) draft[i].options.splice(j, 1); paintBuilder(); }
+  if (t.dataset.addo) { draft[+t.dataset.addo].options.push(""); paintBuilder(); }
+});
+document.querySelector(".add-q").onclick = (e) => { const b = e.target.closest("[data-add]"); if (b) { draft.push(newQ(b.dataset.add)); paintBuilder(); } };
+$("tpl").onclick = (e) => {
+  const b = e.target.closest("[data-tpl]"); if (!b) return;
+  const t = TPL[b.dataset.tpl];
+  $("bTitle").value = t.title;
+  draft = t.qs.map((q) => ({ ...q, id: qid(), options: [...q.options] }));
+  paintBuilder();
+};
+$("newBtn").onclick = () => {
+  if (!App.need()) return;
+  $("buildForm").reset(); $("bMsg").textContent = "";
+  $("bDeadline").value = ymd(addDays(new Date(), 3));
+  draft = [newQ("yesno")]; draft[0].label = "참석하시나요?";
+  paintBuilder();
+  $("buildDialog").showModal();
+};
+$("buildForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  e.preventDefault();
+  const qs = draft.map((q) => ({ ...q, label: q.label.trim(), options: q.options.map((o) => o.trim()).filter(Boolean) }));
+  if (!qs.length) return ($("bMsg").textContent = "문항을 하나 이상 넣어 주세요.");
+  if (qs.some((q) => !q.label)) return ($("bMsg").textContent = "비어 있는 질문이 있어요.");
+  if (qs.some((q) => q.type !== "text" && q.options.length < 2)) return ($("bMsg").textContent = "보기는 2개 이상 필요해요.");
+  await Store.insert("surveys", { title: $("bTitle").value.trim(), description: $("bDesc").value.trim() || null, deadline: $("bDeadline").value,
+    target: $("bTarget").value, anonymous: $("bAnon").checked, questions: qs, author: App.me.name, closed: false });
+  $("buildDialog").close(); App.toast("설문을 보냈어요"); tab = "mine"; load();
+});
+
+/* 응답 */
+function openAnswer(s) {
+  if (!App.need()) return;
+  answering = s;
+  const prev = myResp(s)?.answers || {};
+  $("aTitle").textContent = s.title;
+  $("aDesc").textContent = `${s.description ? s.description + "\n" : ""}마감 ${md(s.deadline)} · ${s.author}${s.anonymous ? " · 익명 설문" : ""}`;
+  $("aQs").innerHTML = s.questions.map((q, i) => `<div class="q"><div class="ql">${i + 1}. ${esc(q.label)}</div>${
+    q.type === "text" ? `<textarea name="${q.id}" style="min-height:70px">${esc(prev[q.id] || "")}</textarea>`
+    : q.options.map((o) => `<label class="opt"><input type="${q.type === "multi" ? "checkbox" : "radio"}" name="${q.id}" value="${esc(o)}" ${(Array.isArray(prev[q.id]) ? prev[q.id] : [prev[q.id]]).includes(o) ? "checked" : ""}>${esc(o)}</label>`).join("")}</div>`).join("");
+  $("aOk").textContent = myResp(s) ? "수정해서 제출" : "제출";
+  $("aMsg").textContent = "";
+  $("answerDialog").showModal();
+}
+$("answerForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  e.preventDefault();
+  const s = answering, answers = {};
+  for (const q of s.questions) {
+    if (q.type === "text") answers[q.id] = $("answerForm").querySelector(`[name="${q.id}"]`).value.trim();
+    else if (q.type === "multi") answers[q.id] = [...$("answerForm").querySelectorAll(`[name="${q.id}"]:checked`)].map((x) => x.value);
+    else answers[q.id] = $("answerForm").querySelector(`[name="${q.id}"]:checked`)?.value || "";
+    if (q.type !== "text" && (!answers[q.id] || !answers[q.id].length)) return ($("aMsg").textContent = `"${q.label}"에 답해 주세요.`);
+  }
+  const prev = myResp(s);
+  if (prev) await Store.update("survey_responses", prev.id, { answers, updated_at: new Date().toISOString() });
+  else await Store.insert("survey_responses", { survey_id: s.id, respondent: App.me.name, respondent_group: App.me.group, answers });
+  $("answerDialog").close(); App.toast("제출했어요"); load();
+});
+
+/* 결과 */
+function openResult(s) { viewing = s.id; paintResult(s.id); $("resultDialog").showModal(); }
+function paintResult(id) {
+  const s = surveys.find((x) => x.id === id); if (!s) return;
+  const rs = respsOf(id), who = targets(s), done = new Set(rs.map((r) => r.respondent));
+  const no = who.filter((n) => !done.has(n));
+  const total = Math.max(who.length, rs.length);
+  $("rTitle").textContent = s.title;
+  $("rMeta").textContent = `${s.target} · 마감 ${md(s.deadline)} · ${s.author}${s.anonymous ? " · 익명" : ""}`;
+  $("rCount").textContent = `응답 ${rs.length}/${total}명`;
+  $("rBar").style.width = `${total ? (rs.length / total) * 100 : 0}%`;
+  $("rQs").innerHTML = s.questions.map((q, i) => {
+    let body = "";
+    if (q.type === "text") {
+      const ts = rs.filter((r) => r.answers[q.id]);
+      body = `<div class="texts">${ts.map((r) => `<div>${s.anonymous ? "" : `<b>${esc(r.respondent)}</b> · `}${esc(r.answers[q.id])}</div>`).join("") || '<span class="muted">아직 없어요</span>'}</div>`;
+    } else {
+      body = q.options.map((o) => {
+        const picks = rs.filter((r) => (Array.isArray(r.answers[q.id]) ? r.answers[q.id] : [r.answers[q.id]]).includes(o));
+        const pct = rs.length ? Math.round((picks.length / rs.length) * 100) : 0;
+        return `<div class="res-row"><span>${esc(o)}${!s.anonymous && picks.length ? ` <span class="muted" style="font-size:12px">${picks.map((r) => esc(r.respondent)).join(", ")}</span>` : ""}</span><b>${picks.length}명 · ${pct}%</b><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+      }).join("");
+    }
+    return `<div class="q"><div class="ql">${i + 1}. ${esc(q.label)}</div>${body}</div>`;
+  }).join("");
+  $("rNoCnt").textContent = `${no.length}명`;
+  $("rNo").innerHTML = no.map((n) => `<span class="chip">${esc(n)}</span>`).join("") || '<span class="muted">모두 응답했어요 🎉</span>';
+  $("rYes").innerHTML = rs.map((r) => `<span class="chip accent">${esc(r.respondent)}</span>`).join("") || '<span class="muted">아직 없어요</span>';
+  const mine = App.me && s.author === App.me.name;
+  $("rDel").classList.toggle("hidden", !mine);
+  $("rClose").classList.toggle("hidden", !mine);
+  $("rClose").textContent = s.closed ? "다시 열기" : "지금 마감";
+}
+$("rDone").onclick = () => $("resultDialog").close();
+$("resultDialog").addEventListener("close", () => { viewing = null; });
+$("rCopy").onclick = async () => {
+  const txt = [...$("rNo").querySelectorAll(".chip")].map((c) => c.textContent).join(", ");
+  try { await navigator.clipboard.writeText(txt); App.toast("복사했어요"); } catch { App.toast(txt || "복사할 이름이 없어요"); }
+};
+$("rCsv").onclick = () => {
+  const s = surveys.find((x) => x.id === viewing), rs = respsOf(s.id);
+  const head = [s.anonymous ? "번호" : "이름", "소속", "응답 시각", ...s.questions.map((q) => q.label)];
+  const rows = rs.map((r, i) => [s.anonymous ? i + 1 : r.respondent, s.anonymous ? "" : r.respondent_group, fmt(r.updated_at || r.created_at), ...s.questions.map((q) => [].concat(r.answers[q.id] ?? "").join(" / "))]);
+  App.download(`${s.title}_결과.csv`, App.csv([head, ...rows]));
+};
+$("rClose").onclick = async () => { const s = surveys.find((x) => x.id === viewing); await Store.update("surveys", s.id, { closed: !s.closed }); load(); };
+$("rDel").onclick = async () => {
+  if (!(await App.confirm("이 설문과 응답을 모두 삭제할까요?", "삭제"))) return;
+  const id = viewing; $("resultDialog").close();
+  await Promise.all(respsOf(id).map((r) => Store.remove("survey_responses", r.id)));
+  await Store.remove("surveys", id); load();
+};
+
+Store.subscribe("surveys", load);
+Store.subscribe("survey_responses", load);
+render(); load();
+</script>
+</body>
+</html>
