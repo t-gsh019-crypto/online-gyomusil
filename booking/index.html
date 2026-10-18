@@ -41,6 +41,30 @@
   .emo { display: flex; gap: 6px; flex-wrap: wrap; }
   .emo button { font-size: 22px; border: 1.5px solid var(--border); background: var(--surface); border-radius: 12px; width: 44px; height: 44px; cursor: pointer; }
   .emo button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .slot .st { font-size: 10px; font-weight: 800; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 14px 0 6px; }
+  .step { padding: 10px 8px; border-radius: 14px; background: var(--surface-2); text-align: center; font-size: 12px; color: var(--text-2); }
+  .step b { display: block; font-size: 14px; color: var(--text-2); }
+  .step.done { background: var(--accent-soft); color: var(--text); }
+  .step.done b { color: var(--accent); }
+  .step img { display: block; margin: 6px auto 0; max-width: 100%; height: 40px; object-fit: contain; }
+  .sign-wrap { position: relative; margin-top: 6px; }
+  .sign { width: 100%; height: 150px; border-radius: 16px; border: 1.5px dashed var(--border); background: #fff; touch-action: none; display: block; cursor: crosshair; }
+  .sign-wrap .ph { position: absolute; inset: 0; display: grid; place-items: center; color: #94a3b8; font-size: 14px; pointer-events: none; }
+  .sign-wrap .clear { position: absolute; right: 8px; top: 8px; }
+  .badge { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+  .badge.out { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+  .badge.back { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .badge.late { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ledger th, .ledger td { border-bottom: 1px solid var(--border); padding: 8px 6px; text-align: left; vertical-align: middle; white-space: nowrap; }
+  .ledger th { font-size: 12px; color: var(--text-2); }
+  .ledger img { height: 28px; max-width: 80px; object-fit: contain; background: #fff; border-radius: 6px; }
+  .ledger-wrap { overflow-x: auto; padding: 6px 12px; }
+  @media print {
+    body > *:not(main), .hero, #tabs, #modeBanner, #v-book, #v-mine, #v-rooms, .no-print { display: none !important; }
+    .ledger-wrap { overflow: visible; box-shadow: none; border: 0; }
+  }
 </style>
 </head>
 <body>
@@ -54,7 +78,7 @@
   <section class="hero">
     <span class="eyebrow">🔑 ROOM BOOKING</span>
     <h2>특별실·기자재 <span class="grad">한 번에 예약</span></h2>
-    <p>빈 칸을 누르면 바로 예약돼요. 같은 시간에 두 번 예약되지 않아요.</p>
+    <p>빈 칸을 누르면 바로 예약돼요. 기자재는 가져갈 때와 돌려놓을 때 일시와 서명을 남겨요.</p>
     <div class="stats">
       <div class="stat"><b id="sToday">0</b><span>오늘 내 예약</span></div>
       <div class="stat"><b id="sWeek">0</b><span>이번 주 내 예약</span></div>
@@ -64,6 +88,7 @@
   <nav class="pills" id="tabs">
     <button type="button" data-t="book" class="on">📅 예약하기</button>
     <button type="button" data-t="mine">🙋 내 예약</button>
+    <button type="button" data-t="ledger">📋 기자재 대여 대장</button>
     <button type="button" data-t="rooms">⚙️ 장소·기자재 관리</button>
   </nav>
 
@@ -78,6 +103,15 @@
     <div class="card tt rise" id="grid"></div>
   </section>
   <section id="v-mine" class="hidden"><div id="mine"></div></section>
+  <section id="v-ledger" class="hidden">
+    <div class="row no-print" style="margin-bottom:10px">
+      <select id="lRoom" aria-label="기자재" style="width:auto"></select>
+      <input id="lMonth" type="month" style="width:auto" aria-label="달">
+      <button class="btn small ghost" id="lCsv" type="button">⬇️ CSV</button><button class="btn small ghost" id="lPrint" type="button">🖨 인쇄</button>
+    </div>
+    <h3 id="lTitle" style="margin:4px 4px 8px"></h3>
+    <div class="card ledger-wrap" id="ledger"></div>
+  </section>
   <section id="v-rooms" class="hidden">
     <div id="roomList"></div>
     <div class="row" style="margin-top:12px"><button class="btn small" id="addRoom" type="button">＋ 장소·기자재 추가</button><button class="btn small ghost hidden" id="seed" type="button">🏫 기본 목록 넣기</button></div>
@@ -95,6 +129,21 @@
   <p class="hint" id="bMsg" style="color:var(--danger);font-size:13px"></p>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">예약</button></div>
 </form></dialog>
+
+<dialog id="infoDialog">
+  <h2 id="iHead" style="margin-bottom:2px"></h2>
+  <p class="muted" id="iSub" style="margin:0"></p>
+  <div id="iSteps"></div>
+  <div id="iSignBox" class="hidden">
+    <label id="iSignLabel"></label>
+    <div class="two"><div><label for="iName" style="margin-top:4px">이름</label><input id="iName" maxlength="20"></div>
+      <div><label for="iNote" style="margin-top:4px">상태·메모 (선택)</label><input id="iNote" maxlength="40" placeholder="예: 태블릿 24대 이상 없음"></div></div>
+    <label style="margin-top:8px">서명</label>
+    <div class="sign-wrap"><canvas class="sign" id="pad"></canvas><div class="ph" id="padPh">여기에 손가락이나 마우스로 서명해 주세요</div><button class="btn small ghost clear" id="padClear" type="button">지우기</button></div>
+    <p class="hint" id="iMsg" style="color:var(--danger);font-size:13px"></p>
+  </div>
+  <div class="actions"><button class="btn danger hidden" id="iCancel" type="button">예약 취소</button><button class="btn ghost" id="iClose" type="button">닫기</button><button class="btn hidden" id="iSign" type="button"></button></div>
+</dialog>
 
 <dialog id="roomDialog"><form method="dialog" id="roomForm">
   <h2 id="rHead">장소·기자재 추가</h2>
@@ -122,7 +171,7 @@ const SEED = [["🔬", "과학실 1", "특별실"], ["🧪", "과학실 2", "특
 const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
 // 주말에는 다음 주를 먼저 보여줌
 const thisWeek = () => { const d = new Date(); return monday(d.getDay() === 6 || d.getDay() === 0 ? addDays(d, 2) : d); };
-let rooms = [], bookings = [], room = null, tab = "book", weekStart = thisWeek(), pick = null, editRoom = null, emoji = EMOJIS[0];
+let rooms = [], bookings = [], room = null, tab = "book", info = null, weekStart = thisWeek(), pick = null, editRoom = null, emoji = EMOJIS[0];
 
 App.init({ onMe: render });
 try { room = localStorage.getItem("gyomusil:room") || null; } catch {}
@@ -138,7 +187,7 @@ const mine = () => bookings.filter((b) => App.me && b.booker === App.me.name);
 
 function render() {
   [...$("tabs").children].forEach((b) => b.classList.toggle("on", b.dataset.t === tab));
-  ["book", "mine", "rooms"].forEach((t) => $("v-" + t).classList.toggle("hidden", tab !== t));
+  ["book", "mine", "ledger", "rooms"].forEach((t) => $("v-" + t).classList.toggle("hidden", tab !== t));
   const tk = ymd(new Date()), ws = ymd(monday(new Date())), we = ymd(addDays(monday(new Date()), 4));
   $("sToday").textContent = mine().filter((b) => b.date === tk).length;
   $("sWeek").textContent = mine().filter((b) => b.date >= ws && b.date <= we).length;
@@ -146,8 +195,18 @@ function render() {
   if (!rooms.some((r) => r.id === room)) room = rooms[0]?.id || null;
   if (tab === "book") renderBook();
   if (tab === "mine") renderMine();
+  if (tab === "ledger") renderLedger();
   if (tab === "rooms") renderRooms();
+  if (info && $("infoDialog").open) paintInfo();
 }
+// 기자재 대여 상태: 예약 → 대여 중 → 반납 완료 (지난 날짜인데 반납 안 했으면 "반납 안 됨")
+const isGear = (b) => rooms.find((r) => r.id === b.room_id)?.kind === "기자재";
+function status(b) {
+  if (b.return_at) return ["back", "반납 완료"];
+  if (b.checkout_at) return b.date < ymd(new Date()) ? ["late", "반납 안 됨"] : ["out", "대여 중"];
+  return ["", "예약"];
+}
+const hm = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
 function renderBook() {
   const tk = ymd(new Date());
@@ -165,7 +224,7 @@ function renderBook() {
     html += `<tr><td class="p">${p}</td>`;
     for (const d of days) {
       const key = ymd(d), b = at(r.id, key, p), isMine = b && App.me && b.booker === App.me.name;
-      html += `<td><div class="slot ${b ? "taken" : ""} ${isMine ? "mine" : ""} ${key < tk && !b ? "past" : ""}" data-date="${key}" data-p="${p}" ${b ? `data-id="${b.id}"` : ""}>${b ? `<div><b>${esc(b.class_name)}</b><span>${esc(b.booker)}</span></div>` : "＋"}</div></td>`;
+      html += `<td><div class="slot ${b ? "taken" : ""} ${isMine ? "mine" : ""} ${key < tk && !b ? "past" : ""}" data-date="${key}" data-p="${p}" ${b ? `data-id="${b.id}"` : ""}>${b ? `<div><b>${esc(b.class_name)}</b><span>${esc(b.booker)}</span>${r.kind === "기자재" && (b.checkout_at || b.return_at) ? `<span class="st">${b.return_at ? "✅ 반납" : "📦 대여 중"}</span>` : ""}</div>` : "＋"}</div></td>`;
     }
     html += "</tr>";
   }
@@ -174,11 +233,11 @@ function renderBook() {
 
 function renderMine() {
   const tk = ymd(new Date());
-  const list = mine().filter((b) => b.date >= tk).sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period);
+  const list = mine().filter((b) => b.date >= tk || (isGear(b) && b.checkout_at && !b.return_at)).sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period);
   $("mine").innerHTML = list.map((b) => {
     const r = rooms.find((x) => x.id === b.room_id);
     return `<div class="card my rise"><span class="em">${esc(r?.emoji || "📍")}</span><div class="grow"><b>${esc(r?.name || "(삭제된 장소)")}</b><div class="muted">${md(b.date)} ${b.period}교시 · ${esc(b.class_name)}${b.purpose ? " · " + esc(b.purpose) : ""}</div></div>
-      <button class="btn small danger" data-cancel="${b.id}">취소</button></div>`;
+      ${isGear(b) ? `<span class="badge ${status(b)[0]}">${status(b)[1]}</span><button class="btn small" data-info="${b.id}">${b.return_at ? "보기" : b.checkout_at ? "반납" : "대여"}</button>` : `<button class="btn small danger" data-cancel="${b.id}">취소</button>`}</div>`;
   }).join("") || App.empty("앞으로 예정된 예약이 없어요", "[📅 예약하기]에서 빈 칸을 눌러 보세요.", "🗓");
 }
 
@@ -192,11 +251,7 @@ function renderRooms() {
 $("rooms").onclick = (e) => { const c = e.target.closest(".room"); if (c) { room = c.dataset.id; try { localStorage.setItem("gyomusil:room", room); } catch {} render(); } };
 $("grid").onclick = async (e) => {
   const s = e.target.closest(".slot"); if (!s) return;
-  if (s.dataset.id) {
-    const b = bookings.find((x) => x.id === s.dataset.id);
-    if (App.me && b.booker === App.me.name && (await App.confirm(`${md(b.date)} ${b.period}교시 예약을 취소할까요?`, "예약 취소"))) { await Store.remove("bookings", b.id); load(); }
-    return;
-  }
+  if (s.dataset.id) return openInfo(s.dataset.id);
   if (!App.need()) return;
   pick = { date: s.dataset.date, period: +s.dataset.p };
   const r = rooms.find((x) => x.id === room);
@@ -223,7 +278,94 @@ $("bookForm").addEventListener("submit", async (e) => {
   App.toast(skipped.length ? `${made.length}건 예약 · 이미 찬 날 ${skipped.join(", ")}은 건너뛰었어요` : `${made.length}건 예약했어요`);
   load();
 });
+$("mine").addEventListener("click", (e) => { const b = e.target.closest("[data-info]"); if (b) openInfo(b.dataset.info); });
 $("mine").onclick = async (e) => { const b = e.target.closest("[data-cancel]"); if (b && (await App.confirm("이 예약을 취소할까요?", "예약 취소"))) { await Store.remove("bookings", b.dataset.cancel); load(); } };
+
+/* 예약 정보 · 기자재 대여/반납 서명 */
+function openInfo(id) { info = id; paintInfo(); $("infoDialog").showModal(); }
+function paintInfo() {
+  const b = bookings.find((x) => x.id === info);
+  if (!b) { $("infoDialog").close(); return; }
+  const r = rooms.find((x) => x.id === b.room_id), gear = r?.kind === "기자재", isMine = App.me && b.booker === App.me.name;
+  $("iHead").textContent = `${r?.emoji || ""} ${r?.name || ""}`;
+  $("iSub").textContent = `${md(b.date)} ${b.period}교시 · ${b.class_name} · ${b.booker}${b.purpose ? " · " + b.purpose : ""}`;
+  const step = (done, title, at, by, sign, note) => `<div class="step ${done ? "done" : ""}"><b>${title}</b>${done ? `${at ? hm(at) : ""}${by ? `<br>${esc(by)}` : ""}${sign ? `<img src="${esc(sign)}" alt="${esc(by)} 서명">` : ""}${note ? `<div style="margin-top:4px">${esc(note)}</div>` : ""}` : "아직"}</div>`;
+  $("iSteps").innerHTML = gear ? `<div class="steps">${step(true, "예약", b.created_at, b.booker)}${step(!!b.checkout_at, "대여", b.checkout_at, b.checkout_by, b.checkout_sign, b.checkout_note)}${step(!!b.return_at, "반납", b.return_at, b.return_by, b.return_sign, b.return_note)}</div>` : "";
+  const next = !gear || b.return_at ? null : b.checkout_at ? "return" : "checkout";
+  $("iSignBox").classList.toggle("hidden", !next);
+  $("iSign").classList.toggle("hidden", !next);
+  if (next) {
+    $("iSignLabel").textContent = next === "checkout" ? "📦 가져갈 때 확인" : "✅ 돌려놓을 때 확인";
+    $("iSign").textContent = next === "checkout" ? "대여 서명" : "반납 서명";
+    if (!$("iName").value) $("iName").value = App.me?.name || "";
+  }
+  $("iCancel").classList.toggle("hidden", !(isMine && !b.checkout_at));
+}
+$("infoDialog").addEventListener("close", () => { info = null; $("iName").value = ""; $("iNote").value = ""; $("iMsg").textContent = ""; clearPad(); });
+$("iClose").onclick = () => $("infoDialog").close();
+$("iCancel").onclick = async () => {
+  const b = bookings.find((x) => x.id === info);
+  if (!(await App.confirm(`${md(b.date)} ${b.period}교시 예약을 취소할까요?`, "예약 취소"))) return;
+  $("infoDialog").close(); await Store.remove("bookings", b.id); load();
+};
+$("iSign").onclick = async () => {
+  if (!App.need()) return;
+  const b = bookings.find((x) => x.id === info), name = $("iName").value.trim();
+  if (!name) return ($("iMsg").textContent = "이름을 적어 주세요.");
+  if (!signed) return ($("iMsg").textContent = "서명을 해 주세요.");
+  const k = b.checkout_at ? "return" : "checkout";
+  await Store.update("bookings", b.id, { [k + "_at"]: new Date().toISOString(), [k + "_by"]: name, [k + "_sign"]: padImage(), [k + "_note"]: $("iNote").value.trim() || null });
+  App.toast(k === "checkout" ? "대여를 기록했어요" : "반납을 기록했어요");
+  $("iNote").value = ""; $("iMsg").textContent = ""; clearPad();
+  await load();
+};
+
+// 손글씨 서명 칸
+const pad = $("pad"), ctx = pad.getContext("2d");
+let drawing = false, signed = false;
+function fitPad() {
+  const r = pad.getBoundingClientRect(); if (!r.width) return;
+  pad.width = r.width * 2; pad.height = r.height * 2;
+  ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.lineWidth = 2.6; ctx.lineCap = ctx.lineJoin = "round"; ctx.strokeStyle = "#0f172a";
+}
+function clearPad() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, pad.width, pad.height); ctx.restore(); signed = false; $("padPh").classList.remove("hidden"); }
+const pt = (e) => { const r = pad.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+pad.addEventListener("pointerdown", (e) => { if (pad.width !== pad.getBoundingClientRect().width * 2) fitPad(); drawing = true; pad.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pt(e)); ctx.lineTo(...pt(e)); ctx.stroke(); });
+pad.addEventListener("pointermove", (e) => { if (!drawing) return; ctx.lineTo(...pt(e)); ctx.stroke(); if (!signed) { signed = true; $("padPh").classList.add("hidden"); } });
+["pointerup", "pointercancel"].forEach((ev) => pad.addEventListener(ev, () => (drawing = false)));
+$("padClear").onclick = clearPad;
+// 저장용으로 작게 줄인 PNG (표 하나에 글자로 저장)
+function padImage() {
+  const c = document.createElement("canvas"); c.width = 300; c.height = Math.round(300 * pad.height / pad.width);
+  c.getContext("2d").drawImage(pad, 0, 0, c.width, c.height);
+  return c.toDataURL("image/png");
+}
+
+/* 기자재 대여 대장 */
+function renderLedger() {
+  const gear = rooms.filter((r) => r.kind === "기자재");
+  const cur = $("lRoom").value;
+  $("lRoom").innerHTML = `<option value="">모든 기자재</option>` + gear.map((r) => `<option value="${r.id}" ${r.id === cur ? "selected" : ""}>${esc(r.emoji || "")} ${esc(r.name)}</option>`).join("");
+  if (!$("lMonth").value) $("lMonth").value = ymd(new Date()).slice(0, 7);
+  const rows = ledgerRows();
+  $("lTitle").textContent = `${$("lRoom").value ? gear.find((r) => r.id === $("lRoom").value)?.name : "기자재"} 대여 대장 · ${$("lMonth").value.replace("-", "년 ")}월`;
+  $("ledger").innerHTML = rows.length ? `<table class="ledger"><thead><tr><th>날짜</th><th>기자재</th><th>학급·예약</th><th>대여</th><th>서명</th><th>반납</th><th>서명</th><th>상태</th></tr></thead><tbody>
+    ${rows.map(({ b, r }) => `<tr><td>${md(b.date)} ${b.period}교시</td><td>${esc(r.name)}</td><td>${esc(b.class_name)} · ${esc(b.booker)}</td>
+      <td>${b.checkout_at ? `${hm(b.checkout_at)}<br>${esc(b.checkout_by)}` : "-"}</td><td>${b.checkout_sign ? `<img src="${esc(b.checkout_sign)}" alt="대여 서명">` : ""}</td>
+      <td>${b.return_at ? `${hm(b.return_at)}<br>${esc(b.return_by)}` : "-"}</td><td>${b.return_sign ? `<img src="${esc(b.return_sign)}" alt="반납 서명">` : ""}</td>
+      <td><span class="badge ${status(b)[0]}">${status(b)[1]}</span>${b.return_note || b.checkout_note ? `<div class="muted" style="font-size:11px">${esc(b.return_note || b.checkout_note)}</div>` : ""}</td></tr>`).join("")}
+  </tbody></table>` : `<div style="padding:10px 0">${App.empty("이 달 기자재 대여 기록이 없어요", gear.length ? "" : "[⚙️ 장소·기자재 관리]에서 종류를 '기자재'로 등록해 주세요.", "📋")}</div>`;
+}
+function ledgerRows() {
+  const m = $("lMonth").value, rid = $("lRoom").value;
+  return bookings.map((b) => ({ b, r: rooms.find((x) => x.id === b.room_id) }))
+    .filter(({ b, r }) => r?.kind === "기자재" && (!rid || r.id === rid) && b.date.startsWith(m))
+    .sort((x, y) => x.b.date.localeCompare(y.b.date) || x.b.period - y.b.period);
+}
+$("lRoom").onchange = render; $("lMonth").onchange = render;
+$("lPrint").onclick = () => window.print();
+$("lCsv").onclick = () => App.download(`기자재대여대장_${$("lMonth").value}.csv`, App.csv([["날짜", "교시", "기자재", "학급", "예약자", "대여 일시", "대여 확인", "반납 일시", "반납 확인", "상태", "메모"],
+  ...ledgerRows().map(({ b, r }) => [b.date, b.period, r.name, b.class_name, b.booker, b.checkout_at ? hm(b.checkout_at) : "", b.checkout_by || "", b.return_at ? hm(b.return_at) : "", b.return_by || "", status(b)[1], [b.checkout_note, b.return_note].filter(Boolean).join(" / ")])]));
 
 /* 장소 관리 */
 function paintEmo() { $("emo").innerHTML = EMOJIS.map((x) => `<button type="button" class="${x === emoji ? "on" : ""}">${x}</button>`).join(""); }

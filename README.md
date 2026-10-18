@@ -20,6 +20,6 @@
 | 13. 학생·학부모 소통 (보호자 회신 화면: `family/?id=…`) | `family/` |
 
 - `shared/` : 공통 디자인(`common.css`), 데이터 저장 도우미(`store.js`), 저장소 연결 정보(`config.js`), 부서 목록·색(`school.js`), 13개 앱 목록·아이콘(`apps.js`), 4~13번 앱 공통 도우미(`app.js`)
-- `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL. 01 → 01b → 02 → 03 → 04 순서로 SQL Editor에서 실행
+- `supabase/` : 데이터 저장소(Supabase)에 표를 만드는 SQL. 01 → 01b → 02 → 03 → 04 → 05 순서로 SQL Editor에서 실행
 
 `shared/config.js`가 비어 있으면 체험 모드(이 브라우저에만 저장)로 동작해요.
