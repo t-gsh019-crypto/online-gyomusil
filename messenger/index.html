@@ -48,6 +48,10 @@
   .pick label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 7px 12px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 14px; cursor: pointer; }
   .pick label:has(input:checked) { background: var(--accent); color: #fff; }
   .pick input { display: none; }
+  .gav.self { background: linear-gradient(135deg, #10b981, #0ea5e9); font-size: 18px; }
+  .room.pin { border: 1px dashed var(--border); margin-bottom: 4px; }
+  .bubble a.auto { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+  .link-tip { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); font-size: 13px; margin-top: 10px; line-height: 1.5; }
   .notice-line { font-size: 12px; color: var(--text-2); text-align: center; padding: 8px; }
   @media (max-width: 720px) {
     .hero { display: none; }
@@ -69,7 +73,7 @@
   <section class="hero" style="padding-bottom:0">
     <span class="eyebrow">💬 MESSENGER</span>
     <h2>업무 대화는 <span class="grad">교사 메신저</span>로</h2>
-    <p>1:1·그룹 대화와 파일 전송을 학교 업무용으로만 써요.</p>
+    <p>1:1·그룹 대화, 나에게 보내는 메모까지. 파일은 드라이브에 두고 링크로 보내요.</p>
   </section>
   <div class="shell" id="shell">
     <section class="card pane list-pane">
@@ -81,8 +85,8 @@
       <div class="pane-head"><button class="back" id="back" type="button" aria-label="목록으로">‹</button><h3 id="chatTitle">대화를 골라 주세요</h3><button class="btn small ghost hidden" id="leave" type="button">나가기</button></div>
       <div class="msgs" id="msgs"></div>
       <form class="composer hidden" id="composer">
-        <label class="icon-btn" title="파일 보내기" style="margin:0">📎<input type="file" id="file" hidden></label>
-        <textarea id="text" placeholder="메시지 입력 (Enter 보내기, Shift+Enter 줄바꿈)" aria-label="메시지"></textarea>
+        <button class="icon-btn" id="linkBtn" type="button" title="링크 보내기" aria-label="링크 보내기">🔗</button>
+        <textarea id="text" placeholder="메시지 입력" aria-label="메시지"></textarea>
         <button class="icon-btn send" type="submit" aria-label="보내기">➤</button>
       </form>
     </section>
@@ -91,11 +95,19 @@
 
 <dialog id="newDialog"><form method="dialog" id="newForm">
   <h2>새 대화</h2>
-  <p class="muted" style="margin:0">한 명을 고르면 1:1, 여러 명이면 그룹 대화가 돼요.</p>
+  <p class="muted" style="margin:0">한 명을 고르면 1:1, 여러 명이면 그룹 대화가 돼요. 나에게 보내는 메모는 목록 맨 위 <b>📝 나에게 보내기</b>를 눌러요.</p>
   <input id="pq" type="search" placeholder="이름·부서로 찾기" style="margin-top:12px">
   <div class="pick" id="pick" style="margin-top:8px"></div>
   <div id="gnameBox" class="hidden"><label for="gname">그룹 이름</label><input id="gname" maxlength="30" placeholder="예: 2학년부 담임"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">대화 시작</button></div>
+</form></dialog>
+
+<dialog id="linkDialog"><form method="dialog" id="linkForm">
+  <h2>🔗 링크 보내기</h2>
+  <label for="lUrl">주소</label><input id="lUrl" type="url" required placeholder="https://drive.google.com/..." autocomplete="off">
+  <label for="lName">이름 (선택)</label><input id="lName" maxlength="60" placeholder="예: 2학기 평가 계획서">
+  <div class="link-tip"><span>💡</span><span>메신저로는 파일을 보낼 수 없어요. 파일은 <b>구글 드라이브·원드라이브·네이버 MYBOX</b> 등에 올리고, 공유 설정을 <b>링크가 있는 모든 사용자</b>로 바꾼 뒤 그 링크를 붙여 넣어 주세요.</span></div>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">보내기</button></div>
 </form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
@@ -116,7 +128,11 @@ App.init({ onMe: render });
 window.addEventListener("roster", paintPick);
 
 const myRooms = () => rooms.filter((r) => App.me && (r.members || []).includes(App.me.name));
-const roomName = (r) => r.is_group ? r.name : (r.members || []).filter((m) => m !== App.me?.name)[0] || "나";
+const isSelf = (r) => !r.is_group && (r.members || []).length === 1;
+const roomName = (r) => r.is_group ? r.name : isSelf(r) ? "나에게 보내기" : (r.members || []).filter((m) => m !== App.me?.name)[0] || "나";
+const selfRoom = () => myRooms().find(isSelf);
+// 글 속 주소는 눌러서 열 수 있게
+const linkify = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a class="auto" href="${u}" target="_blank" rel="noopener">${u}</a>`);
 const msgsOf = (id) => msgs.filter((m) => m.room_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at));
 const lastOf = (id) => { const l = msgsOf(id); return l[l.length - 1]; };
 const unreadOf = (r) => msgsOf(r.id).filter((m) => m.author !== App.me?.name && m.created_at > (lastRead[r.id] || "")).length;
@@ -131,17 +147,20 @@ async function load() {
 
 function render() {
   const q = $("q").value.trim();
-  const list = myRooms()
+  const list = myRooms().filter((r) => !isSelf(r))
     .filter((r) => !q || roomName(r).includes(q) || (r.members || []).some((m) => m.includes(q)))
     .sort((a, b) => (lastOf(b.id)?.created_at || b.created_at).localeCompare(lastOf(a.id)?.created_at || a.created_at));
-  $("rooms").innerHTML = list.map((r) => {
+  const self = selfRoom(), sl = self && lastOf(self.id);
+  const selfHtml = !q || "나에게 메모".includes(q) ? `<div class="room pin ${self && cur === self.id ? "on" : ""}" data-id="${self ? self.id : "self"}"><span class="gav self">📝</span>
+    <div class="info"><div class="name">나에게 보내기</div><div class="last">${sl ? esc(sl.deleted ? "삭제된 메시지" : sl.body || sl.file_name || "") : "메모·링크를 나에게 보관해요"}</div></div><div class="side">${sl ? timeTxt(sl.created_at) : ""}</div></div>` : "";
+  $("rooms").innerHTML = selfHtml + list.map((r) => {
     const l = lastOf(r.id), u = unreadOf(r), name = roomName(r);
     return `<div class="room ${cur === r.id ? "on" : ""}" data-id="${r.id}">
       <span class="gav ${r.is_group ? "group" : ""}">${r.is_group ? "👥" : esc(name.slice(-2))}</span>
       <div class="info"><div class="name">${esc(name)}${r.is_group ? `<small>${r.members.length}</small>` : ""}</div>
-        <div class="last">${l ? (l.file_name && !l.body ? "📎 " + esc(l.file_name) : esc(l.deleted ? "삭제된 메시지" : l.body)) : "대화를 시작해 보세요"}</div></div>
+        <div class="last">${l ? (l.file_url && !l.body ? "🔗 " + esc(l.file_name || "링크") : esc(l.deleted ? "삭제된 메시지" : l.body)) : "대화를 시작해 보세요"}</div></div>
       <div class="side">${l ? timeTxt(l.created_at) : ""}${u && cur !== r.id ? `<span class="unread">${u}</span>` : ""}</div></div>`;
-  }).join("") || `<div class="notice-line" style="padding:30px 10px">아직 대화가 없어요.<br>[＋ 새 대화]로 시작해 보세요.</div>`;
+  }).join("") + (list.length ? "" : `<div class="notice-line" style="padding:24px 10px">아직 대화가 없어요.<br>[＋ 새 대화]로 시작해 보세요.</div>`);
   renderChat();
 }
 
@@ -151,18 +170,17 @@ function renderChat() {
   $("composer").classList.toggle("hidden", !r);
   $("leave").classList.toggle("hidden", !r || !r.is_group);
   if (!r) { $("chatTitle").textContent = "대화를 골라 주세요"; $("msgs").innerHTML = App.empty("대화를 골라 주세요", "왼쪽 목록에서 대화방을 누르면 여기에 열려요.", "💬"); return; }
-  $("chatTitle").textContent = r.is_group ? `${r.name} (${r.members.length})` : roomName(r);
+  $("chatTitle").textContent = r.is_group ? `${r.name} (${r.members.length})` : isSelf(r) ? "📝 나에게 보내기" : roomName(r);
   const box = $("msgs"), atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   let lastDay = "", lastAuthor = "";
-  box.innerHTML = `<div class="notice-line">🔒 학교 업무용 대화방이에요. 학생 개인정보는 보내지 말아 주세요.${r.is_group ? `<br>참여: ${r.members.map(esc).join(", ")}` : ""}</div>` + msgsOf(r.id).map((m) => {
+  box.innerHTML = `<div class="notice-line">${isSelf(r) ? "📝 나만 보는 메모 공간이에요. 할 일·링크를 적어 두세요." : "🔒 학교 업무용 대화방이에요. 학생 개인정보는 보내지 말아 주세요."}<br>🔗 파일은 보낼 수 없어요. 드라이브에 올린 뒤 공유 링크를 보내 주세요.${r.is_group ? `<br>참여: ${r.members.map(esc).join(", ")}` : ""}</div>` + msgsOf(r.id).map((m) => {
     const d = new Date(m.created_at), day = ymd(d), me = m.author === App.me?.name;
     let sep = "";
     if (day !== lastDay) { sep = `<div class="day-sep">${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div>`; lastDay = day; lastAuthor = ""; }
     const showWho = !me && m.author !== lastAuthor; lastAuthor = m.author;
-    const isImg = m.file_url && /\.(png|jpe?g|gif|webp)$/i.test(m.file_name || "");
-    const file = m.file_url && !m.deleted ? (isImg ? `<a href="${esc(m.file_url)}" target="_blank" rel="noopener"><img src="${esc(m.file_url)}" alt="${esc(m.file_name)}"></a>` : `<a class="file-chip" href="${esc(m.file_url)}" download="${esc(m.file_name || "")}">📎 ${esc(m.file_name || "파일")}</a>`) : "";
+    const file = m.file_url && !m.deleted ? `<a class="file-chip" href="${esc(m.file_url)}" target="_blank" rel="noopener">🔗 ${esc(m.file_name || m.file_url)}</a>` : "";
     return `${sep}<div class="msg ${me ? "me" : ""}">${!me ? (showWho ? App.avatar(m.author, 32) : '<span style="width:32px;flex:none"></span>') : ""}
-      <div>${showWho ? `<div class="who">${esc(m.author)}</div>` : ""}<div class="bubble ${m.deleted ? "deleted" : ""}">${m.deleted ? "삭제된 메시지예요" : esc(m.body || "")}${file}</div></div>
+      <div>${showWho ? `<div class="who">${esc(m.author)}</div>` : ""}<div class="bubble ${m.deleted ? "deleted" : ""}">${m.deleted ? "삭제된 메시지예요" : linkify(m.body || "")}${file}</div></div>
       <div class="t">${me && !m.deleted ? `<button class="del" data-del="${m.id}" type="button">삭제</button>` : ""}<span>${pad(d.getHours())}:${pad(d.getMinutes())}</span></div></div>`;
   }).join("");
   if (atBottom || box.dataset.room !== cur) box.scrollTop = box.scrollHeight;
@@ -170,25 +188,32 @@ function renderChat() {
   markRead(cur);
 }
 
-$("rooms").onclick = (e) => { const r = e.target.closest(".room"); if (r) { cur = r.dataset.id; render(); setTimeout(() => $("text").focus(), 50); } };
+$("rooms").onclick = async (e) => {
+  const r = e.target.closest(".room"); if (!r) return;
+  if (r.dataset.id === "self") { if (!App.need()) return; cur = (await Store.insert("chat_rooms", { is_group: false, name: null, members: [App.me.name], created_by: App.me.name })).id; await load(); }
+  else { cur = r.dataset.id; render(); }
+  setTimeout(() => $("text").focus(), 50);
+};
 $("back").onclick = () => { cur = null; render(); };
 $("q").oninput = render;
 
 /* 보내기 */
-async function send(body, file) {
+async function send(body, link) {
   if (!App.need() || !cur) return;
-  let file_url = null, file_name = null;
-  if (file) {
-    try { App.toast("파일 올리는 중…"); file_url = await Store.upload(file, "chat"); file_name = file.name; }
-    catch (e) { App.toast("파일을 보내지 못했어요: " + e.message); return; }
-  }
+  const file_url = link?.url || null, file_name = link ? link.name || null : null;
   await Store.insert("chat_messages", { room_id: cur, author: App.me.name, body: body || null, file_url, file_name, deleted: false });
   load();
 }
 $("composer").addEventListener("submit", (e) => { e.preventDefault(); const v = $("text").value.trim(); if (!v) return; $("text").value = ""; $("text").style.height = ""; send(v); });
 $("text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } });
 $("text").addEventListener("input", () => { $("text").style.height = "auto"; $("text").style.height = Math.min(140, $("text").scrollHeight) + "px"; });
-$("file").onchange = () => { const f = $("file").files[0]; if (f) send("", f); $("file").value = ""; };
+$("linkBtn").onclick = () => { $("linkForm").reset(); $("linkDialog").showModal(); };
+$("linkForm").addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const url = $("lUrl").value.trim();
+  if (!/^https?:\/\//.test(url)) { e.preventDefault(); return; }
+  send("", { url, name: $("lName").value.trim() });
+});
 $("msgs").onclick = async (e) => { const b = e.target.closest("[data-del]"); if (b && (await App.confirm("이 메시지를 삭제할까요?", "삭제"))) { await Store.update("chat_messages", b.dataset.del, { deleted: true }); load(); } };
 $("leave").onclick = async () => {
   const r = rooms.find((x) => x.id === cur);
