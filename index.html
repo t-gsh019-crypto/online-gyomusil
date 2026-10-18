@@ -27,6 +27,18 @@
   .hello { margin: 26px 0 18px; }
   .hello h2 { font-size: clamp(23px, 5.2vw, 34px); line-height: 1.2; margin: 0; letter-spacing: -0.04em; }
   .hello h2 .grad { background: linear-gradient(120deg, #3b6cf6, #8b5cf6 45%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hello { transition: opacity .35s var(--ease), transform .35s var(--ease); transform-origin: top left; }
+  .hello.folded { opacity: 0; transform: scale(.96) translateY(-8px); }
+  /* 아래로 내리면 인사말이 접혀서 위에 한 줄로 */
+  .mini { position: fixed; top: 0; left: 0; right: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid var(--border); transform: translateY(-110%); opacity: 0; transition: transform .35s var(--ease), opacity .35s var(--ease); padding-top: env(safe-area-inset-top); }
+  .mini.on { transform: none; opacity: 1; }
+  .mini .wrap { display: flex; align-items: center; gap: 10px; padding-top: 9px; padding-bottom: 9px; }
+  .mini .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+  .mini .t .grad { background: linear-gradient(120deg, #3b6cf6, #8b5cf6 60%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mini .t small { color: var(--text-2); font-weight: 600; font-size: 13px; }
+  .mini .tm { font-size: 13px; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .mini .up { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; cursor: pointer; flex: none; }
+  @media (prefers-reduced-motion: reduce) { .hello, .mini { transition: none; } }
   .hello p { margin: 8px 0 0; color: var(--text-2); }
   .hello p button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
   .search { position: relative; margin: 0 0 8px; }
@@ -165,7 +177,8 @@
     <div class="clock"><b id="time">--:--</b><span id="date"></span></div>
   </header>
 
-  <section class="hello">
+  <div class="mini" id="mini" aria-hidden="true"><div class="wrap"><span class="t" id="miniT"></span><span class="tm" id="miniTm"></span><button class="up" type="button" id="miniUp" aria-label="맨 위로" tabindex="-1">↑</button></div></div>
+  <section class="hello" id="hello">
     <h2 id="greet">안녕하세요, <span class="grad">선생님</span></h2>
     <p id="sub">오늘 필요한 일을 골라 바로 시작하세요.</p>
     <div class="userbar hidden" id="userbar"><span class="who" id="who"></span><button class="btn small ghost" id="meBtn" type="button">내 정보</button><button class="btn small ghost" id="logout" type="button">로그아웃</button></div>
@@ -242,8 +255,19 @@ function tick() {
   const weekend = d.getDay() === 0 || d.getDay() === 6;
   $("sub").innerHTML = me ? `${esc(me.group)} · ${weekend ? "주말엔 푹 쉬세요. 급한 일만 살짝 확인해요." : "오늘 필요한 일을 골라 바로 시작하세요."}`
     : Auth.on ? "이메일로 로그인하면 13개 앱을 바로 쓸 수 있어요." : "처음이시면 앱을 열 때 이름과 소속을 한 번만 적어 주세요.";
+  $("miniT").innerHTML = `${hi}, <span class="grad">${me ? esc(me.name) + " 선생님" : "선생님"}</span>${me ? ` <small>· ${esc(me.group)}</small>` : ""}`;
+  $("miniTm").textContent = $("time").textContent;
 }
 tick(); setInterval(tick, 15000);
+// 인사말이 화면 위로 사라지면 접고, 한 줄짜리 띠를 보여 줌
+new IntersectionObserver(([e]) => {
+  const gone = e.boundingClientRect.top < 0 && e.intersectionRatio < 0.6;
+  $("hello").classList.toggle("folded", gone);
+  $("mini").classList.toggle("on", gone);
+  $("mini").setAttribute("aria-hidden", String(!gone));
+  $("miniUp").tabIndex = gone ? 0 : -1;
+}, { threshold: [0, 0.6, 1] }).observe($("hello"));
+$("miniUp").addEventListener("click", () => scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
 
 /* 아이콘 화면 */
 // 자주 쓰는 앱(최대 5개) — 로그인 계정에 저장해서 다른 기기에서도 같게 보임
