@@ -77,6 +77,8 @@ def openmeteo():
 
 try:
     key = os.environ.get("KMA_KEY", "").strip()
+    if "%" in key:  # Encoding 키를 넣었어도 되도록 한 번 풀어 줌
+        key = urllib.parse.unquote(key)
     if not key:
         raise RuntimeError("KMA_KEY 없음")
     hourly, source = kma(key)
