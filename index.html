@@ -78,9 +78,20 @@
   .pins-head { display: flex; align-items: center; gap: 8px; margin: 0 0 10px 4px; }
   .pins-head h3 { margin: 0; flex: 1; font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--text-2); }
   .pins-head .hint { font-size: 12px; color: var(--accent); font-weight: 700; }
-  .pins .grid { grid-template-columns: repeat(5, 1fr); }
-  .pins .tile .ic { width: 52px; height: 52px; }
-  .pinbox { padding: 14px 10px 12px; margin-bottom: 18px; }
+  .pinbox { padding: 12px 12px 10px; margin-bottom: 18px; }
+  /* 자주 쓰는 앱: 아이콘 + 이름 한 줄 */
+  .pinrow { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+  .pinrow::-webkit-scrollbar { display: none; }
+  .pinrow .pin { flex: none; display: inline-flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; background: color-mix(in srgb, var(--c1) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c1) 22%, var(--border)); text-decoration: none; color: var(--text); white-space: nowrap; transition: transform .2s var(--ease), background .2s; position: relative; }
+  .pinrow .pin:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--c1) 16%, var(--surface)); }
+  .pinrow .pin .ic { width: 30px; height: 30px; border-radius: 9px; box-shadow: none; flex: none; }
+  .pinrow .pin .ic svg { width: 100%; height: 100%; }
+  .pinrow .pin b { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+  .pinrow .pin .x { display: none; font-size: 11px; color: var(--text-2); margin-left: -2px; }
+  .editing .pinrow .pin { animation: wob .35s ease-in-out infinite alternate; }
+  .editing .pinrow .pin .x { display: inline; }
+  @media (max-width: 719px) { .pinrow { gap: 6px; } .pinrow .pin { padding: 4px 11px 4px 4px; gap: 6px; } .pinrow .pin .ic { width: 24px; height: 24px; border-radius: 7px; } .pinrow .pin b { font-size: 13px; } }
+  @media (min-width: 720px) { .pinrow { flex-wrap: wrap; overflow: visible; } }
   .star { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; display: none; place-items: center; font-size: 13px; background: var(--surface-solid); box-shadow: var(--shadow); z-index: 2; color: #94a3b8; }
   .editing .star { display: grid; }
   .editing .tile.on .star { background: #f59e0b; color: #fff; }
@@ -171,8 +182,6 @@
     .tile .ic svg, .tile .ic::after { border-radius: 14px; }
     .tile b { font-size: 14px; }
     .tile p { display: block; }
-    .pins .grid { grid-template-columns: repeat(5, 1fr); }
-    .pins .tile { flex-direction: column; align-items: flex-start; }
     .pinbox { padding: 16px; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
   }
   @media (min-width: 1000px) { .grid { grid-template-columns: repeat(4, 1fr); } .tile { flex-direction: column; align-items: flex-start; } }
@@ -204,7 +213,7 @@
 
   <section class="card auth hidden" id="auth"></section>
   <div id="appArea">
-  <section class="pins card pinbox" id="pinSec"><div class="pins-head"><h3>⭐ 자주 쓰는 앱</h3><span class="hint hidden" id="pinHint"></span><button class="btn small ghost" id="pinEdit" type="button">편집</button></div><div class="grid" id="pins"></div></section>
+  <section class="pins card pinbox" id="pinSec"><div class="pins-head"><h3>⭐ 자주 쓰는 앱</h3><span class="hint hidden" id="pinHint"></span><button class="btn small ghost" id="pinEdit" type="button">편집</button></div><div class="pinrow" id="pins"></div></section>
   <section class="today hidden" id="today">
     <div class="card tl"><div class="td-head" id="tdHead"></div><div class="pends" id="tdPend"></div><div class="tlist" id="tdList"></div></div>
     <div class="card cal"><div class="cal-head" id="calHead"></div><div class="cal-grid" id="calGrid"></div><div class="legend" id="calLegend"></div></div>
@@ -395,7 +404,7 @@ function render() {
     }).join("");
   }
   const pins = getPins();
-  $("pins").innerHTML = pins.map((id, i) => tile(APPS.find((a) => a.id === id), i)).join("") || `<div class="pin-empty">[편집]을 눌러 자주 쓰는 앱을 골라 주세요.</div>`;
+  $("pins").innerHTML = pins.map((id) => { const a = APPS.find((x) => x.id === id); return `<a class="tile pin on" href="./${a.id}/" data-id="${a.id}" style="--c1:${a.c1}" title="${esc(a.desc)}"><span class="ic">${appIcon(a.id)}</span><b>${esc(a.name)}</b><span class="x" aria-hidden="true">✕</span></a>`; }).join("") || `<div class="pin-empty">[편집]을 눌러 자주 쓰는 앱을 골라 주세요.</div>`;
   $("pinSec").classList.toggle("editing", editing);
   $("sections").classList.toggle("editing", editing);
   $("pinEdit").textContent = editing ? "완료" : "편집";
