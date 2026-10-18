@@ -3,8 +3,24 @@
 (function () {
   const cfg = window.GYOMUSIL_CONFIG || {};
   const useCloud = !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
-  const sb = useCloud ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+  const AUTH_KEY = "gyomusil-auth";
+  const sb = useCloud ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+    auth: { storageKey: AUTH_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" },
+  }) : null;
   const PREFIX = "gyomusil:";
+
+  // 로그인 확인: 공유 모드에서는 이메일 인증을 마치고 로그인한 선생님만 앱을 쓸 수 있음.
+  // 메인 화면(GYOMUSIL_PAGE = "home")과 학부모 회신 화면(family/?id=)은 로그인 없이 열림.
+  const storedSession = () => { try { return JSON.parse(localStorage.getItem(AUTH_KEY) || "null"); } catch { return null; } };
+  const isPublicPage = window.GYOMUSIL_PAGE === "home" || (/\/family\/?$/.test(location.pathname.replace(/index\.html$/, "")) && new URLSearchParams(location.search).has("id"));
+  const toLogin = () => {
+    const app = location.pathname.replace(/index\.html$/, "").replace(/\/$/, "").split("/").pop();
+    location.replace("../?next=" + encodeURIComponent(app));
+  };
+  if (sb && !isPublicPage) {
+    if (!storedSession()?.user) toLogin();
+    sb.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) toLogin(); });
+  }
 
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
   const readLocal = (table) => {
@@ -27,8 +43,14 @@
       return readLocal(table).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
     },
 
-    async insert(table, row) {
+    // quiet: 저장한 줄을 다시 읽지 않음 (학부모 회신처럼 읽기 권한이 없는 경우)
+    async insert(table, row, { quiet = false } = {}) {
       const full = { id: uid(), created_at: new Date().toISOString(), ...row };
+      if (sb && quiet) {
+        const { error } = await sb.from(table).insert(full);
+        if (error) throw error;
+        return full;
+      }
       if (sb) {
         const { data, error } = await sb.from(table).insert(full).select().single();
         if (error) throw error;
@@ -88,16 +110,46 @@
     },
   };
 
-  // 사용자(선생님) 정보 — 로그인 기능 전까지는 이 브라우저에 이름·부서를 기억해 둠
+  // 사용자(선생님) 정보 — 공유 모드에서는 로그인 계정에 저장된 이름·소속, 체험 모드에서는 이 브라우저에 기억
   const Me = {
     get() {
+      if (sb) {
+        const m = storedSession()?.user?.user_metadata;
+        return m && m.name ? { name: m.name, group: m.group || "" } : null;
+      }
       try { return JSON.parse(localStorage.getItem(PREFIX + "me") || "null"); } catch { return null; }
     },
     set(me) {
+      if (sb) { sb.auth.updateUser({ data: { name: me.name, group: me.group } }); return; }
       try { localStorage.setItem(PREFIX + "me", JSON.stringify(me)); } catch {}
     },
   };
 
+  // 가입·로그인·로그아웃 (메인 화면에서 씀)
+  const Auth = {
+    on: !!sb,
+    client: sb,
+    user: () => storedSession()?.user || null,
+    async signUp(email, password, name, group) {
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name, group }, emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      // 이미 가입된 메일이면 identities가 비어서 돌아옴
+      if (data.user && !(data.user.identities || []).length) throw new Error("already");
+      return data;
+    },
+    async signIn(email, password) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    },
+    async resend(email) { const { error } = await sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: location.origin + location.pathname } }); if (error) throw error; },
+    async resetMail(email) { const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }); if (error) throw error; },
+    async newPassword(password) { const { error } = await sb.auth.updateUser({ password }); if (error) throw error; },
+    async update(me) { const { error } = await sb.auth.updateUser({ data: me }); if (error) throw error; },
+    async signOut() { await sb.auth.signOut(); },
+  };
+
   window.Store = Store;
   window.Me = Me;
+  window.Auth = Auth;
 })();

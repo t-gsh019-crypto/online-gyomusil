@@ -168,7 +168,7 @@ async function parentMode() {
     const row = { notice_id: n.id, student_no: +$("rNo").value, student_name: $("rName").value.trim(), choice: document.querySelector("[name=rc]:checked").value,
       signer: $("rSigner").value.trim(), relation: $("rRel").value, memo: $("rMemo").value.trim() };
     try {
-      await Store.insert("family_replies", row);
+      await Store.insert("family_replies", row, { quiet: true });
       $("rForm").outerHTML = `<div class="done rise"><div class="big">💚</div><h3>회신이 전달됐어요</h3><p class="muted">${esc(row.student_no)}번 ${esc(row.student_name)} · ${esc(row.choice)}<br>${esc(row.signer)}(${esc(row.relation)}) 님, 감사합니다.</p></div>`;
     } catch (err) { btn.disabled = false; btn.textContent = "회신 보내기"; App.toast("보내지 못했어요. 잠시 후 다시 시도해 주세요."); }
   });

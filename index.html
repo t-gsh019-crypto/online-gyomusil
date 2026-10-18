@@ -28,7 +28,7 @@
   .hello h2 { font-size: clamp(26px, 6vw, 40px); line-height: 1.2; margin: 0; letter-spacing: -0.04em; }
   .hello h2 .grad { background: linear-gradient(120deg, #3b6cf6, #8b5cf6 45%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hello p { margin: 8px 0 0; color: var(--text-2); }
-  .hello button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .hello p button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
   .search { position: relative; margin: 0 0 8px; }
   .search input { padding-left: 44px; height: 52px; border-radius: 18px; background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); box-shadow: var(--shadow); font-size: 16px; }
   .search svg { position: absolute; z-index: 1; pointer-events: none; left: 15px; top: 15px; width: 22px; height: 22px; color: var(--text-2); }
@@ -52,6 +52,24 @@
   .chipapp:hover { transform: translateY(-2px); }
   .chipapp svg { width: 30px; height: 30px; border-radius: 9px; }
   .none { text-align: center; color: var(--text-2); padding: 40px 0; }
+  .userbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .userbar .who { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
+  .userbar .who i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; color: #fff; background: linear-gradient(135deg, #3b6cf6, #8b5cf6); }
+  .userbar .who small { color: var(--text-2); font-weight: 600; }
+  .auth { max-width: 440px; margin: 10px auto 0; padding: 24px; }
+  .auth h3 { margin: 0 0 4px; font-size: 21px; letter-spacing: -0.03em; }
+  .auth .lead { margin: 0 0 6px; color: var(--text-2); font-size: 14px; }
+  .auth .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 14px; background: var(--surface-2); margin-bottom: 14px; }
+  .auth .seg button { border: 0; background: transparent; font: inherit; font-weight: 700; padding: 9px; border-radius: 10px; color: var(--text-2); cursor: pointer; }
+  .auth .seg button.on { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+  .auth .btn.full { width: 100%; justify-content: center; margin-top: 16px; }
+  .auth .msg { font-size: 13px; margin: 10px 0 0; line-height: 1.5; }
+  .auth .msg.err { color: var(--danger); }
+  .auth .msg.ok { color: var(--ok); }
+  .auth .link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; }
+  .auth .rule { display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); font-size: 13px; line-height: 1.55; margin-top: 14px; }
+  .auth .mail { text-align: center; }
+  .auth .mail .big { font-size: 56px; line-height: 1; margin: 6px 0 10px; }
   footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--text-2); }
   /* 넓은 화면: 설명이 보이는 카드형 */
   @media (min-width: 720px) {
@@ -86,7 +104,11 @@
   <section class="hello">
     <h2 id="greet">안녕하세요, <span class="grad">선생님</span></h2>
     <p id="sub">오늘 필요한 일을 골라 바로 시작하세요.</p>
+    <div class="userbar hidden" id="userbar"><span class="who" id="who"></span><button class="btn small ghost" id="meBtn" type="button">내 정보</button><button class="btn small ghost" id="logout" type="button">로그아웃</button></div>
   </section>
+
+  <section class="card auth hidden" id="auth"></section>
+  <div id="appArea">
 
   <label class="search">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -95,9 +117,22 @@
 
   <section class="sec hidden" id="recentSec"><h3>최근 사용</h3><div class="recent" id="recent"></div></section>
   <div id="sections"></div>
+  </div>
   <footer>13개 앱 · 이미지 없이 코드로 그린 아이콘 · <a href="https://github.com/t-gsh019-crypto/online-gyomusil" style="color:inherit">소스 보기</a></footer>
 </main>
 
+<dialog id="meDialog"><form method="dialog" id="meForm">
+  <h2>내 정보</h2>
+  <label for="mName">이름</label><input id="mName" required maxlength="20">
+  <label for="mGroup">소속</label><select id="mGroup"></select>
+  <p class="muted" id="mEmail" style="font-size:13px"></p>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
+</form></dialog>
+
+<script>window.GYOMUSIL_PAGE = "home";</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="shared/config.js"></script>
+<script src="shared/store.js"></script>
 <script src="shared/school.js"></script>
 <script src="shared/apps.js"></script>
 <script>
@@ -125,12 +160,12 @@ function tick() {
   const d = new Date(), h = d.getHours();
   $("time").textContent = `${String(h).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   $("date").textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${"일월화수목금토"[d.getDay()]}요일`;
-  const me = read("me", null);
+  const me = Me.get();
   const hi = h < 5 ? "늦은 시간까지 수고 많으세요" : h < 11 ? "좋은 아침이에요" : h < 14 ? "점심 맛있게 드세요" : h < 18 ? "오후도 힘내세요" : "오늘도 수고 많으셨어요";
   $("greet").innerHTML = `${hi},<br><span class="grad">${me ? esc(me.name) + " 선생님" : "선생님"}</span>`;
   const weekend = d.getDay() === 0 || d.getDay() === 6;
   $("sub").innerHTML = me ? `${esc(me.group)} · ${weekend ? "주말엔 푹 쉬세요. 급한 일만 살짝 확인해요." : "오늘 필요한 일을 골라 바로 시작하세요."}`
-    : `처음이시면 앱을 열 때 이름과 소속을 한 번만 적어 주세요.`;
+    : Auth.on ? "이메일로 로그인하면 13개 앱을 바로 쓸 수 있어요." : "처음이시면 앱을 열 때 이름과 소속을 한 번만 적어 주세요.";
 }
 tick(); setInterval(tick, 15000);
 
@@ -161,6 +196,128 @@ document.addEventListener("click", (e) => { const t = e.target.closest("[data-id
 window.addEventListener("pageshow", render);
 document.querySelector('link[rel="icon"]') || document.head.insertAdjacentHTML("beforeend", `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(document.querySelector(".logo").outerHTML.replace('class="logo"', 'xmlns="http://www.w3.org/2000/svg"'))}">`);
 render();
+
+/* ───────── 로그인 · 가입 · 로그아웃 ───────── */
+const DEPTS = SCHOOL.depts.map((d) => d.name);
+const params = new URLSearchParams(location.search);
+const next = params.get("next");
+let mode = "login", lastEmail = "";
+const ERR = {
+  "Invalid login credentials": "메일 주소나 비밀번호가 맞지 않아요.",
+  "Email not confirmed": "아직 메일 인증을 하지 않으셨어요. 인증을 마쳐야 사용할 수 있어요.",
+  "User already registered": "이미 가입된 메일이에요. 로그인해 주세요.",
+  already: "이미 가입된 메일이에요. 로그인해 주세요.",
+  "Password should be at least 6 characters.": "비밀번호는 8자 이상으로 정해 주세요.",
+};
+const errText = (e) => ERR[e.message] || (/rate limit|security purposes/i.test(e.message) ? "메일을 너무 자주 보냈어요. 잠시 뒤 다시 시도해 주세요." : /invalid.*email|email.*invalid/i.test(e.message) ? "메일 주소를 다시 확인해 주세요." : e.message);
+
+function paintAuth(msg, kind = "err") {
+  const box = $("auth");
+  const m = msg ? `<p class="msg ${kind}">${msg}</p>` : "";
+  const rule = `<div class="rule"><span>🔐</span><span><b>메일 인증을 마쳐야 사용할 수 있어요.</b> 가입하면 인증 메일이 가요. 메일 속 링크를 누르기 전에는 로그인되지 않아요. 메일이 안 보이면 스팸함도 확인해 주세요.</span></div>`;
+  if (mode === "login" || mode === "signup") {
+    box.innerHTML = `<h3>${mode === "login" ? "로그인" : "선생님 가입"}</h3><p class="lead">우리 학교 선생님만 쓰는 온라인 교무실이에요.</p>
+      <div class="seg"><button type="button" data-m="login" class="${mode === "login" ? "on" : ""}">로그인</button><button type="button" data-m="signup" class="${mode === "signup" ? "on" : ""}">가입</button></div>
+      <form id="aForm">
+        ${mode === "signup" ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label for="aName">이름</label><input id="aName" required maxlength="20" placeholder="예: 김민지"></div>
+          <div><label for="aGroup">소속</label><select id="aGroup">${DEPTS.map((d) => `<option>${esc(d)}</option>`).join("")}</select></div></div>` : ""}
+        <label for="aEmail">메일 주소</label><input id="aEmail" type="email" required autocomplete="email" value="${esc(lastEmail)}" placeholder="name@example.com">
+        <label for="aPw">비밀번호</label><input id="aPw" type="password" required minlength="${mode === "signup" ? 8 : 1}" autocomplete="${mode === "signup" ? "new-password" : "current-password"}" placeholder="${mode === "signup" ? "8자 이상" : ""}">
+        ${mode === "signup" ? `<label for="aPw2">비밀번호 확인</label><input id="aPw2" type="password" required autocomplete="new-password">` : ""}
+        <button class="btn full" id="aGo" type="submit">${mode === "login" ? "로그인" : "가입하고 인증 메일 받기"}</button>
+      </form>
+      ${m}${mode === "login" ? `<p class="msg"><button class="link" type="button" data-m="reset">비밀번호를 잊으셨나요?</button>${/인증/.test(msg || "") ? ` · <button class="link" type="button" id="resend">인증 메일 다시 보내기</button>` : ""}</p>` : ""}
+      ${rule}`;
+  } else if (mode === "sent") {
+    box.innerHTML = `<div class="mail"><div class="big">📩</div><h3>인증 메일을 보냈어요</h3><p class="lead"><b>${esc(lastEmail)}</b>(으)로 보낸 메일에서<br>인증 링크(<b>Confirm your mail</b>)를 눌러 주세요.</p></div>
+      ${rule}${m}<p class="msg" style="text-align:center"><button class="link" type="button" id="resend">메일 다시 보내기</button> · <button class="link" type="button" data-m="login">로그인 화면으로</button></p>`;
+  } else if (mode === "reset") {
+    box.innerHTML = `<h3>비밀번호 찾기</h3><p class="lead">가입한 메일로 비밀번호를 새로 정하는 링크를 보내 드려요.</p>
+      <form id="aForm"><label for="aEmail">메일 주소</label><input id="aEmail" type="email" required value="${esc(lastEmail)}"><button class="btn full" type="submit">재설정 메일 보내기</button></form>
+      ${m}<p class="msg"><button class="link" type="button" data-m="login">로그인 화면으로</button></p>`;
+  } else if (mode === "newpw") {
+    box.innerHTML = `<h3>새 비밀번호 정하기</h3><p class="lead">앞으로 쓸 비밀번호를 적어 주세요.</p>
+      <form id="aForm"><label for="aPw">새 비밀번호</label><input id="aPw" type="password" required minlength="8" autocomplete="new-password" placeholder="8자 이상">
+      <label for="aPw2">비밀번호 확인</label><input id="aPw2" type="password" required autocomplete="new-password"><button class="btn full" type="submit">저장</button></form>${m}`;
+  }
+}
+$("auth").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-m]");
+  if (b) { lastEmail = $("aEmail")?.value || lastEmail; mode = b.dataset.m; return paintAuth(); }
+  if (e.target.id === "resend") {
+    try { await Auth.resend(lastEmail || $("aEmail").value.trim()); paintAuth("인증 메일을 다시 보냈어요.", "ok"); } catch (err) { paintAuth(errText(err)); }
+  }
+});
+$("auth").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const go = e.target.querySelector("button[type=submit]"); go.disabled = true;
+  const email = $("aEmail")?.value.trim(), pw = $("aPw")?.value;
+  if (email) lastEmail = email;
+  try {
+    if (mode === "login") { await Auth.signIn(email, pw); return; }
+    if ((mode === "signup" || mode === "newpw") && pw !== $("aPw2").value) { go.disabled = false; return paintAuth("비밀번호 확인이 서로 달라요."); }
+    if (mode === "signup") { const d = await Auth.signUp(email, pw, $("aName").value.trim(), $("aGroup").value); if (!d.session) { mode = "sent"; paintAuth(); } return; }
+    if (mode === "reset") { await Auth.resetMail(email); return paintAuth("메일을 보냈어요. 메일 속 링크를 누르면 새 비밀번호를 정할 수 있어요.", "ok"); }
+    if (mode === "newpw") { await Auth.newPassword(pw); mode = "login"; history.replaceState(null, "", location.pathname); return showSignedIn("비밀번호를 바꿨어요"); }
+  } catch (err) { paintAuth(errText(err)); }
+  finally { if (go.isConnected) go.disabled = false; }
+});
+
+function showSignedOut() {
+  $("auth").classList.remove("hidden"); $("appArea").classList.add("hidden"); $("userbar").classList.add("hidden");
+  paintAuth(next ? "로그인한 선생님만 쓸 수 있어요. 먼저 로그인해 주세요." : "", "ok");
+  tick();
+}
+function showSignedIn(toast) {
+  if (next && APPS.some((a) => a.id === next)) { location.replace(`./${next}/`); return; }
+  $("auth").classList.add("hidden"); $("appArea").classList.remove("hidden"); $("userbar").classList.remove("hidden");
+  const me = Me.get() || { name: "선생님", group: "" };
+  $("who").innerHTML = `<i>${esc(me.name.slice(-2))}</i>${esc(me.name)} <small>${esc(me.group)}</small>`;
+  tick(); render();
+  if (toast) flash(toast);
+  // 선생님 명단에 등록 (메신저·미응답 확인에 씀)
+  Store.list("teachers").then((list) => { if (!list.some((t) => t.name === me.name)) Store.insert("teachers", { name: me.name, group: me.group }); }).catch(() => {});
+}
+function flash(t) {
+  const d = document.createElement("div");
+  d.textContent = t;
+  d.style.cssText = "position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:50;background:var(--text);color:var(--bg);padding:12px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow-lg)";
+  document.body.append(d); setTimeout(() => d.remove(), 2600);
+}
+$("logout").onclick = async () => { await Auth.signOut(); };
+$("meBtn").onclick = () => {
+  const me = Me.get() || {};
+  $("mGroup").innerHTML = DEPTS.map((d) => `<option ${d === me.group ? "selected" : ""}>${esc(d)}</option>`).join("");
+  $("mName").value = me.name || ""; $("mEmail").textContent = Auth.user()?.email ? `로그인 메일: ${Auth.user().email}` : "";
+  $("meDialog").showModal();
+};
+$("meForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  await Auth.update({ name: $("mName").value.trim(), group: $("mGroup").value });
+  flash("내 정보를 바꿨어요");
+});
+
+if (Auth.on) {
+  // 메일 링크가 만료됐거나 잘못됐을 때 주소에 오류가 붙어서 돌아옴
+  const hash = new URLSearchParams(location.hash.slice(1));
+  if (hash.get("error")) { mode = "login"; history.replaceState(null, "", location.pathname); }
+  $("appArea").classList.add("hidden");
+  Auth.client.auth.onAuthStateChange((event, session) => {
+    setTimeout(() => {
+      if (event === "PASSWORD_RECOVERY") { mode = "newpw"; $("auth").classList.remove("hidden"); $("appArea").classList.add("hidden"); return paintAuth(); }
+      if (mode === "newpw") return;
+      if (event === "USER_UPDATED" && session) return showSignedIn();
+      if (session) {
+        const fromMail = /type=signup|access_token/.test(location.hash);
+        if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+        showSignedIn(fromMail ? "메일 인증을 마쳤어요. 환영해요!" : "");
+      } else {
+        showSignedOut();
+        if (hash.get("error")) paintAuth("인증 링크가 만료됐거나 이미 쓰였어요. 로그인해 보시고, 안 되면 인증 메일을 다시 받아 주세요.");
+      }
+    });
+  });
+}
 </script>
 </body>
 </html>
