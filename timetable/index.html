@@ -28,8 +28,17 @@
   .cell { height: 58px; border-radius: 12px; background: var(--surface-2); padding: 5px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 1px; font-size: 12px; line-height: 1.25; position: relative; overflow: hidden; transition: .2s var(--ease); }
   .cell b { font-size: 14px; letter-spacing: -0.02em; }
   .cell span { color: var(--text-2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cell.has { background: color-mix(in srgb, var(--accent) 13%, var(--surface)); }
-  .cell.has b { color: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+  .cell.has { --sc: var(--accent); background: color-mix(in srgb, var(--sc) 16%, var(--surface)); box-shadow: inset 3px 0 0 var(--sc); }
+  .cell.has b { color: color-mix(in srgb, var(--sc) 78%, var(--text)); }
+  .cell.has.added { box-shadow: none; }
+  /* 끌어서 옮기기 */
+  .editing .cell.has { cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .cell.lift { opacity: .35; }
+  .cell.drop { outline: 2.5px solid var(--accent) !important; outline-offset: -2px; transform: scale(1.04); }
+  .cell.drop.swap { outline-color: #f5a524 !important; }
+  .ghost-cell { position: fixed; z-index: 60; pointer-events: none; width: 90px; transform: translate(-50%, -60%) rotate(-3deg) scale(1.08); box-shadow: var(--shadow-lg); }
+  .subj-legend { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .subj-legend span { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--sc) 16%, var(--surface)); color: color-mix(in srgb, var(--sc) 78%, var(--text)); }
   .cell.moved { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, transparent 6px 12px); }
   .cell.moved b { text-decoration: line-through; color: var(--text-2); }
   .cell.added { background: var(--grad); }
@@ -148,8 +157,9 @@
       <button class="icon-btn" id="thisW" type="button" style="font-size:12px;font-weight:800">오늘</button>
       <button class="icon-btn" id="nextW" type="button" aria-label="다음 주">›</button>
     </div>
-    <div class="banner hidden" id="editBanner" style="background:var(--accent-soft);color:var(--accent)">✏️ 입력 모드예요. 칸을 눌러 학급·과목을 넣어요. 엑셀에서 한 번에 붙여넣으려면 [⚙️ 입력·관리] 탭을 쓰세요.</div>
+    <div class="banner hidden" id="editBanner" style="background:var(--accent-soft);color:var(--accent)">✏️ 입력 모드예요. 칸을 눌러 학급·과목을 넣고, 수업을 끌어다 다른 칸에 놓으면 옮겨져요(수업이 있는 칸에 놓으면 서로 바뀌어요. 휴대폰은 꾹 누른 뒤 끌기). 엑셀에서 한 번에 붙여넣으려면 [⚙️ 입력·관리] 탭을 쓰세요.</div>
     <div class="card tt rise" id="grid"></div>
+    <div class="subj-legend" id="subjLegend"></div>
     <div class="legend-row">
       <span><i style="background:color-mix(in srgb, var(--accent) 25%, var(--surface))"></i>정규 수업</span>
       <span><i style="background:var(--grad)"></i>교체·보강으로 생긴 수업</span>
@@ -395,6 +405,7 @@ function renderGrid() {
   const days = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
   $("weekTitle").textContent = `${days[0].getMonth() + 1}/${days[0].getDate()} – ${days[4].getMonth() + 1}/${days[4].getDate()}`;
   const tk = todayKey();
+  const used = new Set();
   let html = `<table class="${editing ? "editing" : ""}"><thead><tr><th></th>${days.map((d) => `<th class="${ymd(d) === tk ? "today" : ""}">${DOW[d.getDay()]}<small>${d.getMonth() + 1}/${d.getDate()}</small></th>`).join("")}</tr></thead><tbody>`;
   for (const p of PERIODS) {
     html += `<tr><td class="p">${p}</td>`;
@@ -407,12 +418,27 @@ function renderGrid() {
       const main = c ? esc(gridMode === "teacher" ? c.class_name : c.subject) : "";
       const sub = !c ? "" : c.state === "moved" ? `→ ${esc(c.note)}` : esc(gridMode === "teacher" ? c.subject : c.teacher);
       const tag = c && (c.state === "added" || c.pending) ? `<span class="tag">${c.pending ? "대기" : esc(c.note)}</span>` : "";
-      html += `<td><div class="cell ${cls}" data-dow="${d.getDay()}" data-p="${p}">${tag}<b>${main}</b><span>${sub}</span></div></td>`;
+      const sc = c && c.state !== "moved" ? subjColor(c.subject) : "";
+      if (sc) used.add(c.subject);
+      html += `<td><div class="cell ${cls}" data-dow="${d.getDay()}" data-p="${p}"${sc ? ` style="--sc:${sc}"` : ""}>${tag}<b>${main}</b><span>${sub}</span></div></td>`;
     }
     html += "</tr>";
   }
   $("grid").innerHTML = html + "</tbody></table>";
+  $("subjLegend").innerHTML = [...used].sort((a, b) => a.localeCompare(b, "ko")).map((x) => `<span style="--sc:${subjColor(x)}">${esc(x)}</span>`).join("");
   if (!slots.length && !editing) $("grid").insertAdjacentHTML("beforeend", `<p class="muted" style="text-align:center;margin:10px 0 4px">아직 시간표가 없어요. [✏️ 내 시간표 입력] 또는 [⚙️ 입력·관리] 탭에서 시작해 보세요.</p>`);
+}
+
+/* 과목별 색 — 자주 쓰는 과목은 정해진 색, 나머지는 이름으로 골고루 */
+const SUBJ_COLORS = [["국어", "#e5484d"], ["수학", "#2f6fed"], ["영어", "#8b5cf6"], ["과학", "#16a34a"], ["물리", "#16a34a"], ["화학", "#0d9488"], ["생명", "#65a30d"], ["지구", "#0e7490"],
+  ["사회", "#ea580c"], ["역사", "#a16207"], ["한국사", "#a16207"], ["지리", "#c2410c"], ["도덕", "#db2777"], ["윤리", "#db2777"], ["체육", "#0891b2"], ["음악", "#c026d3"], ["미술", "#f43f5e"],
+  ["기술", "#4d7c0f"], ["가정", "#b45309"], ["정보", "#0369a1"], ["한문", "#78716c"], ["일본어", "#be185d"], ["중국어", "#b91c1c"], ["진로", "#d97706"], ["창체", "#64748b"], ["자율", "#64748b"], ["동아리", "#64748b"]];
+const PALETTE = ["#e5484d", "#2f6fed", "#8b5cf6", "#16a34a", "#ea580c", "#0891b2", "#c026d3", "#a16207", "#db2777", "#4f46e5", "#0d9488", "#b45309"];
+function subjColor(name) {
+  const n = String(name || "").trim(); if (!n) return "";
+  const hit = SUBJ_COLORS.find(([k]) => n.startsWith(k) || n.includes(k)); if (hit) return hit[1];
+  let h = 0; for (const ch of n) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
 }
 
 /* ───────── 도우미: 후보 찾기 ───────── */
@@ -738,7 +764,7 @@ $("editBtn").onclick = () => { editing = !editing; render(); };
 $("fab").onclick = () => { if (!me) return askMe(); tab = "helper"; $("hWho").value = me.name; render(); };
 
 $("grid").onclick = (e) => {
-  if (!editing) return;
+  if (!editing || dragJustEnded) return;
   const c = e.target.closest(".cell"); if (!c) return;
   editCell = { dow: +c.dataset.dow, period: +c.dataset.p };
   const b = baseSlot(me.name, editCell.dow, editCell.period);
@@ -756,6 +782,72 @@ $("slotForm").addEventListener("submit", async (e) => {
   else await Store.insert("tt_slots", { teacher: me.name, dow: editCell.dow, period: editCell.period, class_name: cls, subject: subj });
   load();
 });
+
+/* 입력 모드에서 수업을 끌어 다른 칸으로 옮기기 (마우스는 바로, 터치는 꾹 누른 뒤) */
+let drag = null, dragJustEnded = false;
+const cellAt = (x, y) => document.elementFromPoint(x, y)?.closest?.("#grid .cell");
+function flash(msg) {
+  let t = $("ttToast");
+  if (!t) { document.body.insertAdjacentHTML("beforeend", `<div id="ttToast" style="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);padding:12px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow-lg);opacity:0;transition:.3s;pointer-events:none;max-width:90vw;text-align:center"></div>`); t = $("ttToast"); }
+  t.textContent = msg; t.style.opacity = 1; clearTimeout(t._h); t._h = setTimeout(() => (t.style.opacity = 0), 2200);
+}
+function startDrag(e) {
+  drag.on = true; drag.src.classList.add("lift");
+  const g = drag.src.cloneNode(true); g.classList.add("ghost-cell"); g.classList.remove("lift"); document.body.appendChild(g); drag.ghost = g;
+  moveDrag(e.clientX, e.clientY);
+  navigator.vibrate?.(15);
+}
+function moveDrag(x, y) {
+  drag.ghost.style.left = x + "px"; drag.ghost.style.top = y + "px";
+  const t = cellAt(x, y);
+  if (drag.over && drag.over !== t) drag.over.classList.remove("drop", "swap");
+  drag.over = t && t !== drag.src ? t : null;
+  if (drag.over) drag.over.classList.add("drop", ...(drag.over.classList.contains("has") ? ["swap"] : []));
+}
+function endDrag(drop) {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  document.removeEventListener("touchmove", blockScroll, { passive: false });
+  if (!d.on) return;
+  dragJustEnded = true; setTimeout(() => (dragJustEnded = false), 0);
+  d.src.classList.remove("lift"); d.ghost?.remove(); d.over?.classList.remove("drop", "swap");
+  if (drop && d.over) moveSlot(+d.src.dataset.dow, +d.src.dataset.p, +d.over.dataset.dow, +d.over.dataset.p);
+}
+const blockScroll = (e) => { if (drag?.on) e.preventDefault(); };
+$("grid").addEventListener("pointerdown", (e) => {
+  if (!editing || e.button > 0) return;
+  const c = e.target.closest(".cell.has"); if (!c) return;
+  drag = { src: c, x: e.clientX, y: e.clientY, on: false, touch: e.pointerType !== "mouse", id: e.pointerId };
+  if (drag.touch) {
+    document.addEventListener("touchmove", blockScroll, { passive: false });
+    drag.timer = setTimeout(() => drag && !drag.on && startDrag({ clientX: drag.x, clientY: drag.y }), 280);
+  }
+});
+document.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const far = Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6;
+  if (!drag.on) { if (!far) return; if (drag.touch) return endDrag(false); startDrag(e); }
+  moveDrag(e.clientX, e.clientY);
+});
+document.addEventListener("pointerup", (e) => drag && e.pointerId === drag.id && endDrag(true));
+document.addEventListener("pointercancel", (e) => drag && e.pointerId === drag.id && endDrag(false));
+$("grid").addEventListener("contextmenu", (e) => { if (editing && e.target.closest(".cell.has")) e.preventDefault(); });
+async function moveSlot(fd, fp, td, tp) {
+  const a = baseSlot(me.name, fd, fp), b = baseSlot(me.name, td, tp);
+  if (!a) return;
+  // 옮길 자리에 그 학급이 다른 선생님 수업으로 이미 차 있으면 알려 주기
+  const clash = (cls, dow, p) => slots.find((s) => s.teacher !== me.name && s.class_name === cls && s.dow === dow && s.period === p);
+  const c1 = clash(a.class_name, td, tp), c2 = b && clash(b.class_name, fd, fp);
+  const warn = [c1 && `${a.class_name}은 ${DOW[td]} ${tp}교시에 ${c1.teacher} 선생님 ${c1.subject || ""} 수업이 있어요.`, c2 && `${b.class_name}은 ${DOW[fd]} ${fp}교시에 ${c2.teacher} 선생님 ${c2.subject || ""} 수업이 있어요.`].filter(Boolean);
+  if (warn.length && !confirm(warn.join("\n") + "\n그래도 옮길까요?")) return;
+  try {
+    await Store.update("tt_slots", a.id, { dow: td, period: tp });
+    if (b) await Store.update("tt_slots", b.id, { dow: fd, period: fp });
+    flash(b ? `${DOW[fd]} ${fp}교시 ↔ ${DOW[td]} ${tp}교시 수업을 바꿨어요` : `${a.class_name} ${a.subject || ""} 수업을 ${DOW[td]} ${tp}교시로 옮겼어요`);
+  } catch (err) { flash("옮기지 못했어요: " + err.message); }
+  load();
+}
 
 Store.subscribe("tt_slots", load);
 Store.subscribe("tt_requests", load);
