@@ -1,0 +1,36 @@
+# 학교망에서 날씨 서비스가 막혀도 보이도록, 30분마다 날씨를 받아 사이트(gh-pages)에 weather.json으로 올려 둠
+name: weather
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: weather
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      - name: 날씨 받기
+        run: |
+          LAT=$(grep -o 'lat: [0-9.]*' shared/school.js | head -1 | cut -d' ' -f2)
+          LON=$(grep -o 'lon: [0-9.]*' shared/school.js | head -1 | cut -d' ' -f2)
+          curl -sSf --retry 3 -o weather.tmp "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=temperature_2m,weather_code,precipitation_probability&timezone=Asia%2FSeoul&forecast_days=2"
+          jq -e '.hourly.time | length > 0' weather.tmp > /dev/null
+          jq -c --arg lat "$LAT" --arg lon "$LON" '{hourly, lat: ($lat|tonumber), lon: ($lon|tonumber), updated: (now|todate)}' weather.tmp > weather.json
+          rm weather.tmp
+      - name: 올리기
+        run: |
+          git config user.name "weather-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather.json
+          git diff --cached --quiet && exit 0
+          git commit -m "날씨 갱신"
+          git push origin HEAD:gh-pages
