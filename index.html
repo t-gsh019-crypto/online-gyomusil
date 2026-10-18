@@ -326,7 +326,7 @@ async function fetchWx(W) {
     if (!r.ok) throw new Error(r.status);
     const j = await r.json();
     if (Date.now() - new Date(j.updated) > 3 * 3600000) throw new Error("오래된 날씨");
-    return { hourly: onlyToday(j.hourly) };
+    return { hourly: onlyToday(j.hourly), source: j.source };
   } catch {}
   // 2) 날씨 서비스에서 바로
   try {
@@ -363,7 +363,7 @@ async function weather() {
     const k = wxKind(h.weather_code[i], hr < 6 || hr >= 19), rp = h.precipitation_probability?.[i];
     return `<div class="h ${hr < nowH ? "past" : hr === nowH ? "now" : ""}" title="${hr}시 ${WX_NAME[k]}"><small>${hr === nowH ? "지금" : hr + "시"}</small>${WX_ICON[k]}<b>${Math.round(h.temperature_2m[i])}°</b><span class="rp">${rp >= 30 ? rp + "%" : ""}</span></div>`;
   }).join("");
-  $("wx").innerHTML = cells; $("wx").title = `${W.place || ""} 오늘 날씨`;
+  $("wx").innerHTML = cells; $("wx").title = `${W.place || ""} 오늘 날씨${d.source ? ` · ${d.source}` : ""}`;
   const i = h.time.findIndex((t) => +t.slice(11, 13) === nowH);
   if (i >= 0) $("nowWx").innerHTML = `${WX_ICON[wxKind(h.weather_code[i], nowH < 6 || nowH >= 19)]}${Math.round(h.temperature_2m[i])}°`;
   const cur = $("wx").querySelector(".now"); if (cur) $("wx").scrollLeft = Math.max(0, cur.offsetLeft - $("wx").offsetLeft - 50);

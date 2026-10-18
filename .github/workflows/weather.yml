@@ -1,4 +1,4 @@
-# 학교망에서 날씨 서비스가 막혀도 보이도록, 30분마다 날씨를 받아 사이트(gh-pages)에 weather.json으로 올려 둠
+# 학교망에서 날씨 서비스가 막혀도 보이도록, 30분마다 기상청(없으면 Open-Meteo) 날씨를 받아 사이트(gh-pages)에 weather.json으로 올려 둠
 name: weather
 on:
   schedule:
@@ -19,13 +19,12 @@ jobs:
         with:
           ref: gh-pages
       - name: 날씨 받기
+        env:
+          KMA_KEY: ${{ secrets.KMA_KEY }}
         run: |
-          LAT=$(grep -o 'lat: [0-9.]*' shared/school.js | head -1 | cut -d' ' -f2)
-          LON=$(grep -o 'lon: [0-9.]*' shared/school.js | head -1 | cut -d' ' -f2)
-          curl -sSf --retry 3 -o weather.tmp "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=temperature_2m,weather_code,precipitation_probability&timezone=Asia%2FSeoul&forecast_days=2"
-          jq -e '.hourly.time | length > 0' weather.tmp > /dev/null
-          jq -c --arg lat "$LAT" --arg lon "$LON" '{hourly, lat: ($lat|tonumber), lon: ($lon|tonumber), updated: (now|todate)}' weather.tmp > weather.json
-          rm weather.tmp
+          # gh-pages에 스크립트가 없을 때를 대비해 main에서 가져옴
+          [ -f .github/scripts/weather.py ] || curl -sSf -o /tmp/weather.py "https://raw.githubusercontent.com/${{ github.repository }}/main/.github/scripts/weather.py"
+          python3 "$( [ -f .github/scripts/weather.py ] && echo .github/scripts/weather.py || echo /tmp/weather.py )"
       - name: 올리기
         run: |
           git config user.name "weather-bot"
