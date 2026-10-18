@@ -25,7 +25,7 @@
   .clock b { display: block; font-size: 22px; letter-spacing: -0.02em; line-height: 1.1; }
   .clock span { font-size: 12px; color: var(--text-2); }
   .hello { margin: 26px 0 18px; }
-  .hello h2 { font-size: clamp(26px, 6vw, 40px); line-height: 1.2; margin: 0; letter-spacing: -0.04em; }
+  .hello h2 { font-size: clamp(23px, 5.2vw, 34px); line-height: 1.2; margin: 0; letter-spacing: -0.04em; }
   .hello h2 .grad { background: linear-gradient(120deg, #3b6cf6, #8b5cf6 45%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hello p { margin: 8px 0 0; color: var(--text-2); }
   .hello p button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
@@ -34,23 +34,30 @@
   .search svg { position: absolute; z-index: 1; pointer-events: none; left: 15px; top: 15px; width: 22px; height: 22px; color: var(--text-2); }
   .sec { margin-top: 26px; }
   .sec h3 { margin: 0 0 12px 4px; font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--text-2); text-transform: uppercase; }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 8px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 6px; }
   .tile { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--text); text-align: center; -webkit-tap-highlight-color: transparent; outline: none; }
-  .tile .ic { width: 68px; height: 68px; border-radius: 20px; display: grid; place-items: center; transition: transform .35s var(--ease), box-shadow .35s var(--ease); box-shadow: 0 10px 22px -10px var(--c1), 0 2px 4px rgba(15, 23, 42, .08); position: relative; }
-  .tile .ic svg { width: 100%; height: 100%; border-radius: 20px; display: block; }
-  .tile .ic::after { content: ""; position: absolute; inset: 0; border-radius: 20px; background: linear-gradient(160deg, rgba(255, 255, 255, .35), transparent 45%); pointer-events: none; }
-  .tile b { font-size: 13px; font-weight: 700; line-height: 1.25; letter-spacing: -0.03em; word-break: keep-all; }
-  .tile p { display: none; margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.45; }
+  .tile .ic { width: 58px; height: 58px; border-radius: 17px; display: grid; place-items: center; transition: transform .35s var(--ease), box-shadow .35s var(--ease); box-shadow: 0 10px 22px -10px var(--c1), 0 2px 4px rgba(15, 23, 42, .08); position: relative; }
+  .tile .ic svg { width: 100%; height: 100%; border-radius: 17px; display: block; }
+  .tile .ic::after { content: ""; position: absolute; inset: 0; border-radius: 17px; background: linear-gradient(160deg, rgba(255, 255, 255, .35), transparent 45%); pointer-events: none; }
+  .tile b { font-size: 12px; font-weight: 700; line-height: 1.25; letter-spacing: -0.03em; word-break: keep-all; }
+  .tile p { display: none; margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.45; }
   .tile:hover .ic, .tile:focus-visible .ic { transform: translateY(-4px) scale(1.04); box-shadow: 0 18px 30px -12px var(--c1), 0 2px 4px rgba(15, 23, 42, .08); }
   .tile:focus-visible .ic { outline: 3px solid var(--c1); outline-offset: 3px; }
   .tile:active .ic { transform: scale(.94); transition-duration: .1s; }
   .tile.pop { animation: pop .5s var(--ease) both; }
   @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.9); } to { opacity: 1; transform: none; } }
-  .recent { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
-  .recent::-webkit-scrollbar { display: none; }
-  .chipapp { display: flex; align-items: center; gap: 8px; padding: 7px 14px 7px 7px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); text-decoration: none; color: var(--text); font-size: 14px; font-weight: 700; white-space: nowrap; box-shadow: var(--shadow); transition: transform .2s var(--ease); }
-  .chipapp:hover { transform: translateY(-2px); }
-  .chipapp svg { width: 30px; height: 30px; border-radius: 9px; }
+  .pins-head { display: flex; align-items: center; gap: 8px; margin: 0 0 10px 4px; }
+  .pins-head h3 { margin: 0; flex: 1; font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--text-2); }
+  .pins-head .hint { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .pins .grid { grid-template-columns: repeat(5, 1fr); }
+  .pins .tile .ic { width: 52px; height: 52px; }
+  .pinbox { padding: 14px 10px 12px; margin-bottom: 18px; }
+  .star { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; display: none; place-items: center; font-size: 13px; background: var(--surface-solid); box-shadow: var(--shadow); z-index: 2; color: #94a3b8; }
+  .editing .star { display: grid; }
+  .editing .tile.on .star { background: #f59e0b; color: #fff; }
+  .editing .tile .ic { animation: wob .35s ease-in-out infinite alternate; }
+  @keyframes wob { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+  .pin-empty { grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--text-2); padding: 10px 0; }
   .none { text-align: center; color: var(--text-2); padding: 40px 0; }
   .userbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
   .userbar .who { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
@@ -74,7 +81,7 @@
   @media (min-width: 820px) { .today { grid-template-columns: 1.15fr 1fr; align-items: start; } }
   .today .card { padding: 18px; }
   .td-head, .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .td-head h3, .cal-head h3 { margin: 0; font-size: 18px; letter-spacing: -0.03em; flex: 1; }
+  .td-head h3, .cal-head h3 { margin: 0; font-size: 16px; letter-spacing: -0.03em; flex: 1; }
   .cal-head h3 { text-align: center; }
   .td-head .cnt { font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); padding: 3px 10px; border-radius: 999px; }
   .pends { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -93,7 +100,7 @@
   .ti.due .tt .allday { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .ti .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
   .ti .tx { min-width: 0; }
-  .ti .tx b { display: block; font-size: 15px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ti .tx b { display: block; font-size: 14px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ti .tx small { display: block; font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ti.past { opacity: .45; }
   .ti.now { background: color-mix(in srgb, var(--c) 12%, transparent); }
@@ -118,13 +125,16 @@
   /* 넓은 화면: 설명이 보이는 카드형 */
   @media (min-width: 720px) {
     .grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .tile { flex-direction: row; align-items: center; text-align: left; gap: 14px; padding: 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s; }
+    .tile { flex-direction: row; align-items: center; text-align: left; gap: 12px; padding: 13px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s; }
     .tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--c1) 40%, var(--border)); }
     .tile:hover .ic { transform: rotate(-4deg) scale(1.05); }
-    .tile .ic { width: 58px; height: 58px; flex: none; border-radius: 17px; }
-    .tile .ic svg, .tile .ic::after { border-radius: 17px; }
-    .tile b { font-size: 16px; }
+    .tile .ic { width: 46px; height: 46px; flex: none; border-radius: 14px; }
+    .tile .ic svg, .tile .ic::after { border-radius: 14px; }
+    .tile b { font-size: 14px; }
     .tile p { display: block; }
+    .pins .grid { grid-template-columns: repeat(5, 1fr); }
+    .pins .tile { flex-direction: column; align-items: flex-start; }
+    .pinbox { padding: 16px; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
   }
   @media (min-width: 1000px) { .grid { grid-template-columns: repeat(4, 1fr); } .tile { flex-direction: column; align-items: flex-start; } }
   @media (prefers-reduced-motion: reduce) { .tile.pop { animation: none; } .tile .ic, .tile { transition: none; } }
@@ -153,6 +163,7 @@
 
   <section class="card auth hidden" id="auth"></section>
   <div id="appArea">
+  <section class="pins card pinbox" id="pinSec"><div class="pins-head"><h3>⭐ 자주 쓰는 앱</h3><span class="hint hidden" id="pinHint"></span><button class="btn small ghost" id="pinEdit" type="button">편집</button></div><div class="grid" id="pins"></div></section>
   <section class="today hidden" id="today">
     <div class="card tl"><div class="td-head" id="tdHead"></div><div class="pends" id="tdPend"></div><div class="tlist" id="tdList"></div></div>
     <div class="card cal"><div class="cal-head" id="calHead"></div><div class="cal-grid" id="calGrid"></div><div class="legend" id="calLegend"></div></div>
@@ -163,7 +174,6 @@
     <input id="q" type="search" placeholder="무엇을 할까요? 예: 교체, 동의서" aria-label="앱 찾기" autocomplete="off">
   </label>
 
-  <section class="sec hidden" id="recentSec"><h3>최근 사용</h3><div class="recent" id="recent"></div></section>
   <div id="sections"></div>
   </div>
   <footer>13개 앱 · 이미지 없이 코드로 그린 아이콘 · <a href="https://github.com/t-gsh019-crypto/online-gyomusil" style="color:inherit">소스 보기</a></footer>
@@ -226,9 +236,22 @@ function tick() {
 tick(); setInterval(tick, 15000);
 
 /* 아이콘 화면 */
+// 자주 쓰는 앱(최대 5개) — 로그인 계정에 저장해서 다른 기기에서도 같게 보임
+const MAX_PINS = 5, DEFAULT_PINS = ["notice", "calendar", "timetable", "tasks", "messenger"];
+let editing = false;
+function getPins() {
+  const fromAcct = typeof Auth !== "undefined" && Auth.on ? Auth.user()?.user_metadata?.pins : null;
+  const p = fromAcct || read("pins", null) || DEFAULT_PINS;
+  return p.filter((id) => APPS.some((a) => a.id === id)).slice(0, MAX_PINS);
+}
+function setPins(p) {
+  write("pins", p);
+  if (typeof Auth !== "undefined" && Auth.on && Auth.user()) Auth.update({ pins: p }).catch(() => {});
+}
 function tile(a, i) {
-  return `<a class="tile pop" href="./${a.id}/" data-id="${a.id}" style="--c1:${a.c1};animation-delay:${i * 35}ms" aria-label="${esc(a.name)}: ${esc(a.desc)}">
-    <span class="ic">${appIcon(a.id)}</span><span><b>${esc(a.name)}</b><p>${esc(a.desc)}</p></span></a>`;
+  const on = getPins().includes(a.id);
+  return `<a class="tile pop ${on ? "on" : ""}" href="./${a.id}/" data-id="${a.id}" style="--c1:${a.c1};animation-delay:${i * 30}ms" aria-label="${esc(a.name)}: ${esc(a.desc)}">
+    <span class="ic">${appIcon(a.id)}<span class="star" aria-hidden="true">${on ? "★" : "☆"}</span></span><span><b>${esc(a.name)}</b><p>${esc(a.desc)}</p></span></a>`;
 }
 function render() {
   const q = $("q").value.trim().toLowerCase();
@@ -239,12 +262,32 @@ function render() {
     $("sections").innerHTML = hits.length ? `<section class="sec"><h3>찾은 앱 ${hits.length}개</h3><div class="grid">${hits.map((a) => tile(a, n++)).join("")}</div></section>`
       : `<p class="none">"${esc(q)}"에 맞는 앱이 없어요.</p>`;
   } else {
-    $("sections").innerHTML = GROUPS.map((g) => `<section class="sec"><h3>${g.title}</h3><div class="grid">${g.ids.map((id) => tile(APPS.find((a) => a.id === id), n++)).join("")}</div></section>`).join("");
+    const pins = getPins();
+    $("sections").innerHTML = GROUPS.map((g) => {
+      const ids = g.ids.filter((id) => editing || !pins.includes(id));
+      return ids.length ? `<section class="sec"><h3>${g.title}</h3><div class="grid">${ids.map((id) => tile(APPS.find((a) => a.id === id), n++)).join("")}</div></section>` : "";
+    }).join("");
   }
-  const recent = read("recent", []).map((id) => APPS.find((a) => a.id === id)).filter(Boolean).slice(0, 5);
-  $("recentSec").classList.toggle("hidden", !recent.length || !!q);
-  $("recent").innerHTML = recent.map((a) => `<a class="chipapp" href="./${a.id}/" data-id="${a.id}">${appIcon(a.id)}${esc(a.name)}</a>`).join("");
+  const pins = getPins();
+  $("pins").innerHTML = pins.map((id, i) => tile(APPS.find((a) => a.id === id), i)).join("") || `<div class="pin-empty">[편집]을 눌러 자주 쓰는 앱을 골라 주세요.</div>`;
+  $("pinSec").classList.toggle("editing", editing);
+  $("sections").classList.toggle("editing", editing);
+  $("pinEdit").textContent = editing ? "완료" : "편집";
+  $("pinHint").classList.toggle("hidden", !editing);
+  $("pinHint").textContent = `${pins.length}/${MAX_PINS} · 별을 눌러 고르기`;
 }
+$("pinEdit").onclick = () => { editing = !editing; $("q").value = ""; render(); };
+// 편집 중에는 아이콘을 눌러도 앱으로 가지 않고 고정/해제
+document.addEventListener("click", (e) => {
+  if (!editing) return;
+  const t = e.target.closest(".tile"); if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = t.dataset.id, p = getPins();
+  if (p.includes(id)) setPins(p.filter((x) => x !== id));
+  else if (p.length >= MAX_PINS) { flash(`자주 쓰는 앱은 ${MAX_PINS}개까지예요. 하나를 먼저 빼 주세요.`); return; }
+  else setPins([...p, id]);
+  render();
+}, true);
 $("q").addEventListener("input", render);
 $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { const first = document.querySelector("#sections .tile"); if (first) { remember(first.dataset.id); location.href = first.href; } } });
 function remember(id) { write("recent", [id, ...read("recent", []).filter((x) => x !== id)].slice(0, 8)); }
