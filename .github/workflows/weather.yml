@@ -1,10 +1,11 @@
-# 학교망에서 날씨 서비스가 막혀도 보이도록, 30분마다 기상청(없으면 Open-Meteo) 날씨를 받아 사이트(gh-pages)에 weather.json으로 올려 둠
+# 학교망에서 날씨 서비스가 막혀도 보이도록, 30분마다 기상청(없으면 Open-Meteo) 날씨를 받아 사이트(main)에 weather.json으로 올려 둠
 name: weather
 on:
   schedule:
     - cron: "*/30 * * * *"
   push:
-    branches: [gh-pages]
+    branches: [main]
+    paths-ignore: [weather.json]
   workflow_dispatch:
 permissions:
   contents: write
@@ -17,15 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: gh-pages
       - name: 날씨 받기
         env:
           KMA_KEY: ${{ secrets.KMA_KEY }}
         run: |
-          # gh-pages에 스크립트가 없을 때를 대비해 main에서 가져옴
-          [ -f .github/scripts/weather.py ] || curl -sSf -o /tmp/weather.py "https://raw.githubusercontent.com/${{ github.repository }}/main/.github/scripts/weather.py"
-          python3 "$( [ -f .github/scripts/weather.py ] && echo .github/scripts/weather.py || echo /tmp/weather.py )"
+          python3 .github/scripts/weather.py
       - name: 올리기
         run: |
           git config user.name "weather-bot"
@@ -33,7 +30,8 @@ jobs:
           git add weather.json
           git diff --cached --quiet && exit 0
           git commit -m "날씨 갱신"
-          git push origin HEAD:gh-pages
+          git pull -q --rebase origin main
+          git push origin HEAD:main
       - name: 사이트 다시 만들기
         # 봇이 올린 변경은 사이트가 저절로 다시 만들어지지 않아서 직접 요청함
         env:
