@@ -70,6 +70,50 @@
   .auth .rule { display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); font-size: 13px; line-height: 1.55; margin-top: 14px; }
   .auth .mail { text-align: center; }
   .auth .mail .big { font-size: 56px; line-height: 1; margin: 6px 0 10px; }
+  .today { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 4px 0 22px; }
+  @media (min-width: 820px) { .today { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+  .today .card { padding: 18px; }
+  .td-head, .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .td-head h3, .cal-head h3 { margin: 0; font-size: 18px; letter-spacing: -0.03em; flex: 1; }
+  .cal-head h3 { text-align: center; }
+  .td-head .cnt { font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); padding: 3px 10px; border-radius: 999px; }
+  .pends { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pends:not(:empty) { margin-bottom: 10px; }
+  .pend { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 5px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .pend svg { width: 22px; height: 22px; border-radius: 7px; }
+  .pend.warn { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .tlist { display: grid; gap: 2px; }
+  @media (min-width: 820px) { .tlist { max-height: 470px; overflow-y: auto; } }
+  .ti { display: grid; grid-template-columns: 50px 14px 1fr auto; gap: 8px; align-items: center; padding: 9px 8px; border-radius: 14px; text-decoration: none; color: var(--text); transition: background .2s; position: relative; }
+  .ti:hover { background: var(--surface-2); }
+  .ti .tt { text-align: right; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .ti .tt b { font-size: 14px; }
+  .ti .tt small { display: block; font-size: 11px; color: var(--text-2); }
+  .ti .tt .allday { font-size: 11px; color: var(--text-2); background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
+  .ti.due .tt .allday { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+  .ti .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+  .ti .tx { min-width: 0; }
+  .ti .tx b { display: block; font-size: 15px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ti .tx small { display: block; font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ti.past { opacity: .45; }
+  .ti.now { background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .badge-now, .badge-next { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; color: #fff; background: var(--c); }
+  .badge-next { background: var(--surface-2); color: var(--text-2); }
+  .td-empty { text-align: center; color: var(--text-2); padding: 26px 0; font-size: 14px; }
+  .cal-head .icon { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 18px; cursor: pointer; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-grid .wd { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-2); padding: 4px 0; }
+  .cd { border: 0; background: transparent; border-radius: 12px; padding: 6px 0 5px; cursor: pointer; display: grid; justify-items: center; gap: 3px; font: inherit; color: var(--text); min-height: 46px; }
+  .cd:hover { background: var(--surface-2); }
+  .cd .n { font-size: 14px; font-weight: 600; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; }
+  .cd.sun .n { color: #e5484d; } .cd.sat .n { color: #3b6cf6; }
+  .cd.out { opacity: .35; }
+  .cd.today .n { background: linear-gradient(135deg, #3b6cf6, #8b5cf6); color: #fff; font-weight: 800; }
+  .cd.sel { background: var(--accent-soft); }
+  .cd .dots { display: flex; gap: 2px; height: 6px; }
+  .cd .dots i, .legend i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 12px; color: var(--text-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
   footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--text-2); }
   /* 넓은 화면: 설명이 보이는 카드형 */
   @media (min-width: 720px) {
@@ -109,6 +153,10 @@
 
   <section class="card auth hidden" id="auth"></section>
   <div id="appArea">
+  <section class="today hidden" id="today">
+    <div class="card tl"><div class="td-head" id="tdHead"></div><div class="pends" id="tdPend"></div><div class="tlist" id="tdList"></div></div>
+    <div class="card cal"><div class="cal-head" id="calHead"></div><div class="cal-grid" id="calGrid"></div><div class="legend" id="calLegend"></div></div>
+  </section>
 
   <label class="search">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -125,7 +173,14 @@
   <h2>내 정보</h2>
   <label for="mName">이름</label><input id="mName" required maxlength="20">
   <label for="mGroup">소속</label><select id="mGroup"></select>
+  <p class="muted" style="font-size:12px;margin:6px 0 0">이름을 바꿔도 예전에 쓴 글의 작성자 이름은 그대로 남아요.</p>
+  <div id="pwBox">
+    <h3 style="margin:18px 0 0;font-size:16px">🔑 비밀번호 바꾸기 <small class="muted" style="font-size:12px;font-weight:600">(바꿀 때만 적어 주세요)</small></h3>
+    <label for="mPw">새 비밀번호</label><input id="mPw" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상">
+    <label for="mPw2">새 비밀번호 확인</label><input id="mPw2" type="password" autocomplete="new-password">
+  </div>
   <p class="muted" id="mEmail" style="font-size:13px"></p>
+  <p id="mMsg" style="font-size:13px;color:var(--danger);margin:4px 0 0"></p>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn" value="ok">저장</button></div>
 </form></dialog>
 
@@ -135,6 +190,7 @@
 <script src="shared/store.js"></script>
 <script src="shared/school.js"></script>
 <script src="shared/apps.js"></script>
+<script src="shared/today.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -274,6 +330,7 @@ function showSignedIn(toast) {
   const me = Me.get() || { name: "선생님", group: "" };
   $("who").innerHTML = `<i>${esc(me.name.slice(-2))}</i>${esc(me.name)} <small>${esc(me.group)}</small>`;
   tick(); render();
+  if (!window._todayOn) { window._todayOn = true; Today.init($("today"), me); } else Today.setMe(me);
   if (toast) flash(toast);
   // 선생님 명단에 등록 (메신저·미응답 확인에 씀)
   Store.list("teachers").then((list) => { if (!list.some((t) => t.name === me.name)) Store.insert("teachers", { name: me.name, group: me.group }); }).catch(() => {});
@@ -288,15 +345,27 @@ $("logout").onclick = async () => { await Auth.signOut(); };
 $("meBtn").onclick = () => {
   const me = Me.get() || {};
   $("mGroup").innerHTML = DEPTS.map((d) => `<option ${d === me.group ? "selected" : ""}>${esc(d)}</option>`).join("");
+  $("mPw").value = $("mPw2").value = ""; $("mMsg").textContent = ""; $("pwBox").classList.toggle("hidden", !Auth.on);
   $("mName").value = me.name || ""; $("mEmail").textContent = Auth.user()?.email ? `로그인 메일: ${Auth.user().email}` : "";
   $("meDialog").showModal();
 };
 $("meForm").addEventListener("submit", async (e) => {
   if (e.submitter?.value !== "ok") return;
-  await Auth.update({ name: $("mName").value.trim(), group: $("mGroup").value });
-  flash("내 정보를 바꿨어요");
+  e.preventDefault();
+  const pw = $("mPw").value, me = { name: $("mName").value.trim(), group: $("mGroup").value };
+  if (pw && pw !== $("mPw2").value) return ($("mMsg").textContent = "새 비밀번호 확인이 서로 달라요.");
+  try {
+    if (Auth.on) { await Auth.update(me); if (pw) await Auth.newPassword(pw); } else Me.set(me);
+    $("meDialog").close();
+    flash(pw ? "내 정보와 비밀번호를 바꿨어요" : "내 정보를 바꿨어요");
+    if (!Auth.on) showSignedIn();
+  } catch (err) { $("mMsg").textContent = /different from the old/i.test(err.message) ? "지금과 다른 비밀번호를 적어 주세요." : err.message; }
 });
 
+if (!Auth.on) {
+  $("userbar").classList.remove("hidden"); $("logout").classList.add("hidden");
+  if (Me.get()) showSignedIn();
+}
 if (Auth.on) {
   // 메일 링크가 만료됐거나 잘못됐을 때 주소에 오류가 붙어서 돌아옴
   const hash = new URLSearchParams(location.hash.slice(1));

@@ -38,7 +38,11 @@
   .pick label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 13px; cursor: pointer; }
   .pick label:has(input:checked) { background: var(--accent); color: #fff; }
   .pick input { display: none; }
-  .todo-edit { display: grid; grid-template-columns: 1fr 120px auto; gap: 6px; margin-top: 6px; }
+  .todo-edit { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; grid-template-areas: "text text x" "due time time" "owner owner owner"; gap: 6px; margin-top: 8px; padding: 10px; border-radius: 14px; background: var(--surface-2); align-items: center; }
+  .todo-edit input { min-width: 0; width: 100%; padding-left: 10px; padding-right: 6px; font-size: 14px; }
+  .todo-edit [data-f=text] { grid-area: text; } .todo-edit [data-f=owner] { grid-area: owner; } .todo-edit [data-f=due] { grid-area: due; } .todo-edit [data-f=time] { grid-area: time; } .todo-edit .x { grid-area: x; justify-self: end; }
+  .todo-edit input[type=date], .todo-edit input[type=time] { padding-left: 8px; padding-right: 6px; }
+  .due { font-size: 12px; font-weight: 700; color: var(--accent); margin-left: 4px; white-space: nowrap; }
   .x { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 18px; }
   @media (min-width: 561px) { #editDialog { width: min(720px, calc(100vw - 24px)); } #viewDialog { width: min(760px, calc(100vw - 24px)); } }
   @media print {
@@ -166,12 +170,12 @@ function paintPick(sel) {
   $("ePick").innerHTML = App.roster.map((t) => `<label><input type="checkbox" value="${esc(t.name)}" ${sel.includes(t.name) ? "checked" : ""}>${esc(t.name)}</label>`).join("");
 }
 function paintTodos() {
-  $("eTodos").innerHTML = todos.map((t, i) => `<div class="todo-edit"><input data-i="${i}" data-f="text" value="${esc(t.text)}" placeholder="할 일"><input data-i="${i}" data-f="owner" value="${esc(t.owner || "")}" placeholder="담당" list="ownerList"><button type="button" class="x" data-rm="${i}">✕</button></div>`).join("")
+  $("eTodos").innerHTML = todos.map((t, i) => `<div class="todo-edit"><input data-i="${i}" data-f="text" value="${esc(t.text)}" placeholder="할 일"><input data-i="${i}" data-f="owner" value="${esc(t.owner || "")}" placeholder="담당" list="ownerList"><input type="date" data-i="${i}" data-f="due" value="${esc(t.due || "")}" aria-label="기한 날짜"><input type="time" data-i="${i}" data-f="time" value="${esc(t.time || "")}" aria-label="시간"><button type="button" class="x" data-rm="${i}">✕</button></div>`).join("")
     + `<datalist id="ownerList">${App.roster.map((t) => `<option value="${esc(t.name)}">`).join("")}</datalist>`;
 }
 $("eTodos").addEventListener("input", (e) => { const t = e.target; if (t.dataset.f) todos[+t.dataset.i][t.dataset.f] = t.value; });
 $("eTodos").addEventListener("click", (e) => { if (e.target.dataset.rm) { todos.splice(+e.target.dataset.rm, 1); paintTodos(); } });
-$("addTodo").onclick = () => { todos.push({ text: "", owner: "", done: false }); paintTodos(); };
+$("addTodo").onclick = () => { todos.push({ text: "", owner: "", due: "", time: "", done: false }); paintTodos(); };
 $("eType").onchange = () => {
   const t = TYPES.find((x) => x[0] === $("eType").value);
   if (!editing && (!$("eAgenda").value || TYPES.some((x) => x[1] === $("eAgenda").value))) $("eAgenda").value = t[1];
@@ -230,7 +234,7 @@ function paintView(id) {
       <tr><th>안건</th><td>${esc(m.agenda)}</td></tr>
       <tr><th>협의 내용</th><td>${esc(m.discussion)}</td></tr>
       <tr><th>결정 사항</th><td>${esc(m.decisions)}</td></tr>
-      ${(m.todos || []).length ? `<tr><th>후속 할 일</th><td style="white-space:normal">${m.todos.map((t, i) => `<label class="todo ${t.done ? "done" : ""}" style="margin:0"><input type="checkbox" data-todo="${i}" ${t.done ? "checked" : ""}><span>${esc(t.text)}${t.owner ? ` <b>(${esc(t.owner)})</b>` : ""}</span></label>`).join("")}</td></tr>` : ""}
+      ${(m.todos || []).length ? `<tr><th>후속 할 일</th><td style="white-space:normal">${m.todos.map((t, i) => `<label class="todo ${t.done ? "done" : ""}" style="margin:0"><input type="checkbox" data-todo="${i}" ${t.done ? "checked" : ""}><span>${esc(t.text)}${t.owner ? ` <b>(${esc(t.owner)})</b>` : ""}${t.due ? `<span class="due">📅 ${U.md(t.due)}${t.time ? " " + esc(t.time) : ""}</span>` : ""}</span></label>`).join("")}</td></tr>` : ""}
     </table>
     <h4 style="margin:16px 0 8px">참석자 확인</h4>
     <div class="signs">${(m.attendees || []).map((n) => sg[n] ? `<div class="sign ok"><span class="stamp">${esc(n.slice(-2))}</span><b>${esc(n)}</b><small>${fmt(sg[n])}</small></div>` : `<div class="sign"><span style="font-size:22px">⏳</span><b>${esc(n)}</b><small>확인 전</small></div>`).join("")}</div>
