@@ -1,4 +1,4 @@
-// 13개 앱 목록과 아이콘(코드로 그린 SVG) — 메인 화면과 각 앱 상단에서 함께 씀
+// 앱 목록(url이 있으면 바깥 주소로 새 창에서 열림)과 아이콘(코드로 그린 SVG) — 메인 화면과 각 앱 상단에서 함께 씀
 window.APPS = [
   { id: "notice", name: "공지·업무 전달", desc: "부서별 공지, 읽음 확인, 댓글", c1: "#3b6cf6", c2: "#8b5cf6",
     art: `<path d="M14 27h9l19-11v32L23 37h-9a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3z" fill="#fff"/><path d="M20 37l4 11h6l-3-11" fill="#fff" opacity=".6"/><path d="M47 25c3 2 3 12 0 14M51 21c6 4 6 18 0 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>` },
@@ -26,7 +26,12 @@ window.APPS = [
     art: `<rect x="15" y="12" width="34" height="40" rx="6" fill="#fff"/><path d="M32 19l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" fill="#ec4899"/><path d="M22 42h20M22 47h12" stroke="#ec4899" stroke-width="3" stroke-linecap="round" opacity=".5"/>` },
   { id: "family", name: "학생·학부모 소통", desc: "가정통신문, 알림장, 동의서 회신", c1: "#22c55e", c2: "#14b8a6",
     art: `<rect x="10" y="18" width="44" height="30" rx="6" fill="#fff"/><path d="M12 21l20 14 20-14" stroke="#22c55e" stroke-width="3" fill="none" stroke-linejoin="round"/><path d="M32 14c-2-3-7-2-7 2 0 3 7 7 7 7s7-4 7-7c0-4-5-5-7-2z" fill="#fff"/><path d="M32 14c-2-3-7-2-7 2 0 3 7 7 7 7s7-4 7-7c0-4-5-5-7-2z" fill="#f43f5e" transform="translate(0 0)" opacity=".9"/>` },
+  { id: "engineering", name: "최신 공학 탐구", desc: "매일 아침 분야별 최신 기술 뉴스로 만든 수업 자료", c1: "#1b2433", c2: "#2457c5", url: "https://claude.ai/artifact/1oZWoHfhJMdSVRoMy5y8DQ",
+    art: `<circle cx="32" cy="32" r="13" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="32" r="4.5" fill="#fff"/><path d="M32 11v7M32 46v7M11 32h7M46 32h7M17 17l5 5M42 42l5 5M17 47l5-5M42 22l5-5" stroke="#fff" stroke-width="4" stroke-linecap="round"/>` },
 ];
+// 앱 주소: 바깥 앱은 그 주소, 나머지는 ./앱이름/
+window.appHref = (a) => a.url || `./${a.id}/`;
+window.appTarget = (a) => (a.url ? ' target="_blank" rel="noopener"' : "");
 
 // 앱 아이콘 SVG 문자열 만들기
 window.appIcon = function (id, size) {

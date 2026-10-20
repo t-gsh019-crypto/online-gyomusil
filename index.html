@@ -226,7 +226,7 @@
 
   <div id="sections"></div>
   </div>
-  <footer>13개 앱 · 이미지 없이 코드로 그린 아이콘 · <a href="https://github.com/t-gsh019-crypto/online-gyomusil" style="color:inherit">소스 보기</a></footer>
+  <footer>14개 앱 · 이미지 없이 코드로 그린 아이콘 · <a href="https://github.com/t-gsh019-crypto/online-gyomusil" style="color:inherit">소스 보기</a></footer>
 </main>
 
 <dialog id="meDialog"><form method="dialog" id="meForm">
@@ -257,7 +257,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const GROUPS = [
   { title: "소통", ids: ["notice", "messenger", "survey", "family"] },
   { title: "업무·자료", ids: ["tasks", "minutes", "files", "links"] },
-  { title: "일정·수업", ids: ["calendar", "timetable", "booking", "lessons", "assess"] },
+  { title: "일정·수업", ids: ["calendar", "timetable", "booking", "lessons", "assess", "engineering"] },
 ];
 // 검색이 잘 되도록 앱마다 떠올릴 만한 말을 덧붙임
 const KEYWORDS = {
@@ -265,7 +265,7 @@ const KEYWORDS = {
   files: "자료 양식 파일 공문 서식", survey: "설문 조사 회신 참석 신청", booking: "예약 특별실 과학실 태블릿 기자재",
   tasks: "업무 할일 체크 마감 제출", messenger: "메신저 대화 채팅 쪽지", minutes: "회의 협의록 회의록 기록 서명",
   links: "링크 나이스 에듀파인 바로가기 사이트", lessons: "수업 지도안 자료 차시 학습지", assess: "평가 수행평가 루브릭 채점 기준",
-  family: "학부모 가정통신문 알림장 동의서 회신 학생",
+  family: "학부모 가정통신문 알림장 동의서 회신 학생", engineering: "공학 기술 뉴스 학습지 슬라이드 진로 제조 건설 에너지 정보통신 생명",
 };
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem("gyomusil:" + k)) ?? d; } catch { return d; } };
@@ -281,7 +281,7 @@ function tick() {
   $("greet").innerHTML = `${hi},<br><span class="grad">${me ? esc(me.name) + " 선생님" : "선생님"}</span>`;
   const weekend = d.getDay() === 0 || d.getDay() === 6;
   $("sub").innerHTML = me ? `${esc(me.group)} · ${weekend ? "주말엔 푹 쉬세요. 급한 일만 살짝 확인해요." : "오늘 필요한 일을 골라 바로 시작하세요."}`
-    : Auth.on ? "이메일로 로그인하면 13개 앱을 바로 쓸 수 있어요." : "처음이시면 앱을 열 때 이름과 소속을 한 번만 적어 주세요.";
+    : Auth.on ? "이메일로 로그인하면 모든 앱을 바로 쓸 수 있어요." : "처음이시면 앱을 열 때 이름과 소속을 한 번만 적어 주세요.";
   $("miniT").innerHTML = `${hi}, <span class="grad">${me ? esc(me.name) + " 선생님" : "선생님"}</span>${me ? ` <small>· ${esc(me.group)}</small>` : ""}`;
   $("miniTm").textContent = $("time").textContent;
 }
@@ -385,7 +385,7 @@ function setPins(p) {
 }
 function tile(a, i) {
   const on = getPins().includes(a.id);
-  return `<a class="tile pop ${on ? "on" : ""}" href="./${a.id}/" data-id="${a.id}" style="--c1:${a.c1};animation-delay:${i * 30}ms" aria-label="${esc(a.name)}: ${esc(a.desc)}">
+  return `<a class="tile pop ${on ? "on" : ""}" href="${appHref(a)}"${appTarget(a)} data-id="${a.id}" style="--c1:${a.c1};animation-delay:${i * 30}ms" aria-label="${esc(a.name)}: ${esc(a.desc)}">
     <span class="ic">${appIcon(a.id)}<span class="star" aria-hidden="true">${on ? "★" : "☆"}</span></span><span><b>${esc(a.name)}</b><p>${esc(a.desc)}</p></span></a>`;
 }
 function render() {
@@ -404,7 +404,7 @@ function render() {
     }).join("");
   }
   const pins = getPins();
-  $("pins").innerHTML = pins.map((id) => { const a = APPS.find((x) => x.id === id); return `<a class="tile pin on" href="./${a.id}/" data-id="${a.id}" style="--c1:${a.c1}" title="${esc(a.desc)}"><span class="ic">${appIcon(a.id)}</span><b>${esc(a.name)}</b><span class="x" aria-hidden="true">✕</span></a>`; }).join("") || `<div class="pin-empty">[편집]을 눌러 자주 쓰는 앱을 골라 주세요.</div>`;
+  $("pins").innerHTML = pins.map((id) => { const a = APPS.find((x) => x.id === id); return `<a class="tile pin on" href="${appHref(a)}"${appTarget(a)} data-id="${a.id}" style="--c1:${a.c1}" title="${esc(a.desc)}"><span class="ic">${appIcon(a.id)}</span><b>${esc(a.name)}</b><span class="x" aria-hidden="true">✕</span></a>`; }).join("") || `<div class="pin-empty">[편집]을 눌러 자주 쓰는 앱을 골라 주세요.</div>`;
   $("pinSec").classList.toggle("editing", editing);
   $("sections").classList.toggle("editing", editing);
   $("pinEdit").textContent = editing ? "완료" : "편집";
@@ -424,7 +424,7 @@ document.addEventListener("click", (e) => {
   render();
 }, true);
 $("q").addEventListener("input", render);
-$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { const first = document.querySelector("#sections .tile"); if (first) { remember(first.dataset.id); location.href = first.href; } } });
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { const first = document.querySelector("#sections .tile"); if (first) { remember(first.dataset.id); first.target ? window.open(first.href, "_blank", "noopener") : (location.href = first.href); } } });
 function remember(id) { write("recent", [id, ...read("recent", []).filter((x) => x !== id)].slice(0, 8)); }
 document.addEventListener("click", (e) => { const t = e.target.closest("[data-id]"); if (t) remember(t.dataset.id); });
 window.addEventListener("pageshow", render);
