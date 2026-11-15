@@ -1,5 +1,5 @@
 # 기상청 단기예보(KMA_KEY)로 오늘 시간별 날씨를 weather.json에 저장. 키가 없거나 실패하면 Open-Meteo로 대신.
-import json, math, os, re, sys, urllib.parse, urllib.request
+import json, math, os, re, sys, time, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
@@ -25,9 +25,16 @@ def grid(lat, lon):
     return int(ra * math.sin(th) + XO + 0.5), int(ro - ra * math.cos(th) + YO + 0.5)
 
 
-def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.loads(r.read().decode("utf-8"))
+def get(url, tries=3):
+    # 잠깐 막히거나 느린 경우가 있어 몇 번 더 시도
+    for i in range(tries):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception:
+            if i == tries - 1:
+                raise
+            time.sleep(10 * (i + 1))
 
 
 def kma(key):
@@ -84,7 +91,12 @@ try:
     hourly, source = kma(key)
 except Exception as e:
     print("기상청 실패, Open-Meteo로 대신:", e, file=sys.stderr)
-    hourly, source = openmeteo()
+    try:
+        hourly, source = openmeteo()
+    except Exception as e2:
+        # 둘 다 안 되면 지난 날씨를 그대로 두고 조용히 끝냄 (다음 차례에 다시 시도)
+        print("Open-Meteo도 실패, 이번에는 건너뜀:", e2, file=sys.stderr)
+        sys.exit(0)
 
 json.dump({"hourly": hourly, "lat": LAT, "lon": LON, "source": source, "updated": datetime.now(timezone.utc).isoformat()}, open("weather.json", "w"), ensure_ascii=False, separators=(",", ":"))
 print(source, len(hourly["time"]), "칸")
